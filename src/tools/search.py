@@ -61,8 +61,8 @@ def get_web_search_tool(max_search_results: int):
             name="web_search",
             max_results=max_search_results,
             api_key=os.getenv("SPARK_API_KEY", ""),
-            app_id = os.getenv("SPARK_APP_ID", ""),
-            api_secret=os.getenv("SPARK_API_SECRET", "")
+            app_id=os.getenv("SPARK_APP_ID", ""),
+            api_secret=os.getenv("SPARK_API_SECRET", ""),
         )
     else:
         raise ValueError(f"Unsupported search engine: {SELECTED_SEARCH_ENGINE}")

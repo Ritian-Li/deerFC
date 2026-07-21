@@ -133,7 +133,7 @@ async def activate_or_login(session: AsyncSession, raw_code: str) -> tuple[User,
     user = User(
         model_id=card.model_id,
         remaining_uses=plan.total_uses,
-        expires_at=utcnow() + timedelta(days=plan.valid_days),
+        expires_at=utcnow() + timedelta(minutes=plan.valid_minutes),
         token_reserve=plan.token_reserve,
         session_id=str(uuid.uuid4()),
     )
@@ -156,7 +156,9 @@ async def renew(session: AsyncSession, user: User, raw_code: str) -> User:
         raise HTTPException(status_code=500, detail="套餐配置缺失，请联系卖家")
 
     user.remaining_uses += plan.total_uses
-    user.expires_at = max(user.expires_at, utcnow()) + timedelta(days=plan.valid_days)
+    user.expires_at = max(user.expires_at, utcnow()) + timedelta(
+        minutes=plan.valid_minutes
+    )
     if plan.token_reserve:
         user.token_reserve = max(user.token_reserve, 0) + plan.token_reserve
     user.model_id = card.model_id

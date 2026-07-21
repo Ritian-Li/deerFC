@@ -289,9 +289,7 @@ async def _execute(
                 if "__interrupt__" in event_data:
                     raise RuntimeError("unexpected interrupt in auto-accept mode")
                 continue
-            message_chunk, _meta = cast(
-                tuple[BaseMessage, dict[str, Any]], event_data
-            )
+            message_chunk, _meta = cast(tuple[BaseMessage, dict[str, Any]], event_data)
             agent_name = agent[0].split(":")[0] if agent else "unknown"
             event_stream_message: dict[str, Any] = {
                 "thread_id": handle.thread_id,
@@ -320,9 +318,7 @@ async def _execute(
                     event_stream_message["tool_call_chunks"] = (
                         message_chunk.tool_call_chunks
                     )
-                    handle.publish(
-                        make_event("tool_call_chunks", event_stream_message)
-                    )
+                    handle.publish(make_event("tool_call_chunks", event_stream_message))
                 else:
                     handle.publish(make_event("message_chunk", event_stream_message))
     except TokenCapExceeded:

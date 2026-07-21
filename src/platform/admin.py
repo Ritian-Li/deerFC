@@ -18,7 +18,9 @@ from src.platform.models import (
     Plan,
     Run,
     User,
+    format_duration,
     generate_card_code,
+    parse_duration_minutes,
     utcnow,
 )
 
@@ -102,7 +104,7 @@ async def patch_model(
 class PlanIn(BaseModel):
     name: str
     total_uses: int = Field(gt=0)
-    valid_days: int = Field(gt=0)
+    valid_minutes: int = Field(gt=0)
     token_reserve: int = 0
 
 
@@ -124,12 +126,112 @@ async def list_plans(session: AsyncSession = Depends(get_session)):
                 "id": p.id,
                 "name": p.name,
                 "total_uses": p.total_uses,
-                "valid_days": p.valid_days,
+                "valid_minutes": p.valid_minutes,
                 "token_reserve": p.token_reserve,
                 "active": p.active,
             }
             for p in result.scalars()
         ]
+    }
+
+
+async def find_or_create_plan(
+    session: AsyncSession, total_uses: int, valid_minutes: int, token_reserve: int
+) -> Plan:
+    """复用同规格 plan，避免 plans 表膨胀（激活是快照，复用不影响用户额度）."""
+    result = await session.execute(
+        select(Plan).where(
+            Plan.total_uses == total_uses,
+            Plan.valid_minutes == valid_minutes,
+            Plan.token_reserve == token_reserve,
+        )
+    )
+    plan = result.scalars().first()
+    if plan is None:
+        plan = Plan(
+            name=f"{total_uses}次/{format_duration(valid_minutes)}",
+            total_uses=total_uses,
+            valid_minutes=valid_minutes,
+            token_reserve=token_reserve,
+        )
+        session.add(plan)
+        await session.flush()
+    return plan
+
+
+class QuickCodesIn(BaseModel):
+    """按规格直接发卡：模型名 + 时长/次数/token，自动 find-or-create plan."""
+
+    model: str  # display_name 或 model_name 模糊匹配
+    duration: str = "1d"  # 24h / 7d / 12h / 2w
+    uses: int = Field(default=20, gt=0)
+    token_reserve: int = 0
+    count: int = Field(default=1, gt=0, le=500)
+    order_ref: str = ""
+
+
+@router.post("/codes/quick", dependencies=[Depends(require_admin)])
+async def create_codes_quick(
+    body: QuickCodesIn, session: AsyncSession = Depends(get_session)
+):
+    try:
+        valid_minutes = parse_duration_minutes(body.duration)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=f"无效的时长：{e}")
+
+    result = await session.execute(
+        select(ModelEntry).where(
+            (ModelEntry.model_name == body.model)
+            | (ModelEntry.display_name == body.model)
+        )
+    )
+    model = result.scalars().first()
+    if model is None:  # 模糊匹配兜底
+        result = await session.execute(
+            select(ModelEntry).where(
+                ModelEntry.model_name.contains(body.model)
+                | ModelEntry.display_name.contains(body.model)
+            )
+        )
+        matches = result.scalars().all()
+        if len(matches) == 1:
+            model = matches[0]
+        elif len(matches) > 1:
+            names = ", ".join(m.model_name for m in matches)
+            raise HTTPException(
+                status_code=400, detail=f"模型名不唯一，匹配到：{names}"
+            )
+    if model is None:
+        result = await session.execute(select(ModelEntry).where(ModelEntry.active))
+        avail = ", ".join(m.model_name for m in result.scalars())
+        raise HTTPException(
+            status_code=404,
+            detail=f"未找到模型 '{body.model}'。可用：{avail or '（无）'}",
+        )
+
+    plan = await find_or_create_plan(
+        session, body.uses, valid_minutes, body.token_reserve
+    )
+    codes = []
+    for _ in range(body.count):
+        code = generate_card_code()
+        session.add(
+            ActivationCode(
+                code=code,
+                plan_id=plan.id,
+                model_id=model.id,
+                order_ref=body.order_ref,
+            )
+        )
+        codes.append(code)
+    await session.commit()
+    return {
+        "codes": codes,
+        "model": model.display_name,
+        "model_name": model.model_name,
+        "uses": body.uses,
+        "duration": format_duration(valid_minutes),
+        "token_reserve": body.token_reserve,
     }
 
 

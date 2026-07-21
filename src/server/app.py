@@ -138,7 +138,9 @@ async def chat_stream_reattach(
         raise HTTPException(status_code=404, detail="会话不存在")
     handle = get_handle(thread_id)
     if handle is None:
-        raise HTTPException(status_code=404, detail="任务已结束，请在任务记录中查看结果")
+        raise HTTPException(
+            status_code=404, detail="任务已结束，请在任务记录中查看结果"
+        )
     return StreamingResponse(
         _stream_from_handle(handle), media_type="text/event-stream"
     )
@@ -223,9 +225,7 @@ async def _run_sync_skill(user: User, skill: str, invoke):
     except Exception as e:
         await finish_run_now(handle, user.id, meter, False, error_detail=repr(e))
         logger.exception("%s generation failed", skill)
-        raise HTTPException(
-            status_code=500, detail="生成失败，未扣除次数，请重试"
-        )
+        raise HTTPException(status_code=500, detail="生成失败，未扣除次数，请重试")
     return handle, meter, final_state
 
 

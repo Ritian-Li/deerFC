@@ -48,15 +48,13 @@ async def make_card(plan_uses=3, valid_days=7, token_reserve=0) -> str:
         plan = Plan(
             name="test",
             total_uses=plan_uses,
-            valid_days=valid_days,
+            valid_minutes=valid_days * 24 * 60,
             token_reserve=token_reserve,
         )
         session.add_all([model, plan])
         await session.flush()
         code = generate_card_code()
-        session.add(
-            ActivationCode(code=code, plan_id=plan.id, model_id=model.id)
-        )
+        session.add(ActivationCode(code=code, plan_id=plan.id, model_id=model.id))
         await session.commit()
         return code
 
@@ -214,8 +212,12 @@ async def test_subscriber_replay_after_disconnect():
     code = await make_card()
     async with SessionLocal() as session:
         user, _ = await activate_or_login(session, code)
-    handle, conf = await runtime.precheck_and_create_run(user.id, "t-replay", "research")
-    await runtime._execute(_StubGraph(report="离线也能拿到"), handle, conf, user.id, {}, {})
+    handle, conf = await runtime.precheck_and_create_run(
+        user.id, "t-replay", "research"
+    )
+    await runtime._execute(
+        _StubGraph(report="离线也能拿到"), handle, conf, user.id, {}, {}
+    )
     # 任务结束后新订阅者（模拟断线重连）仍能回放全部事件
     q = handle.subscribe()
     events = []

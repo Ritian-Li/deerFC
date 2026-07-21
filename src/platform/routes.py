@@ -78,9 +78,9 @@ async def list_runs(
                 "status": r.status,
                 "charged": r.charged,
                 "created_at": r.created_at.isoformat() + "Z",
-                "finished_at": r.finished_at.isoformat() + "Z"
-                if r.finished_at
-                else None,
+                "finished_at": (
+                    r.finished_at.isoformat() + "Z" if r.finished_at else None
+                ),
                 "total_tokens": r.total_tokens,
                 "model": r.model_name,
                 "has_result": bool(r.result_md or r.file_path),
@@ -110,8 +110,8 @@ async def get_run(
             "model": run.model_name,
             "total_tokens": run.total_tokens,
             "created_at": run.created_at.isoformat() + "Z",
-            "finished_at": run.finished_at.isoformat() + "Z"
-            if run.finished_at
-            else None,
+            "finished_at": (
+                run.finished_at.isoformat() + "Z" if run.finished_at else None
+            ),
         },
     }

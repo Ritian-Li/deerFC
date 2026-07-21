@@ -32,8 +32,10 @@ async def main():
             provider="火山方舟",
         )
         session.add(model)
-        trial = Plan(name="体验卡 3次/7天", total_uses=3, valid_days=7)
-        standard = Plan(name="标准卡 20次/30天", total_uses=20, valid_days=30)
+        trial = Plan(name="体验卡 3次/7天", total_uses=3, valid_minutes=7 * 24 * 60)
+        standard = Plan(
+            name="标准卡 20次/30天", total_uses=20, valid_minutes=30 * 24 * 60
+        )
         session.add_all([trial, standard])
         await session.flush()
 

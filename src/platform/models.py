@@ -23,6 +23,34 @@ def generate_card_code() -> str:
     return "-".join(raw[i : i + 6] for i in range(0, 24, 6))
 
 
+_DURATION_UNITS = {"m": 1, "h": 60, "d": 60 * 24, "w": 60 * 24 * 7}
+
+
+def parse_duration_minutes(text: str) -> int:
+    """'24h'/'7d'/'12h'/'2w'/'90m' → 分钟数。裸数字按天。"""
+    text = text.strip().lower()
+    if not text:
+        raise ValueError("empty duration")
+    unit = text[-1]
+    if unit in _DURATION_UNITS:
+        value, factor = text[:-1], _DURATION_UNITS[unit]
+    else:
+        value, factor = text, _DURATION_UNITS["d"]
+    minutes = int(float(value) * factor)
+    if minutes <= 0:
+        raise ValueError(f"duration must be positive: {text}")
+    return minutes
+
+
+def format_duration(minutes: int) -> str:
+    """分钟数 → 人类可读（用于展示/命名）。"""
+    if minutes % (60 * 24) == 0:
+        return f"{minutes // (60 * 24)}天"
+    if minutes % 60 == 0:
+        return f"{minutes // 60}小时"
+    return f"{minutes}分钟"
+
+
 class Base(DeclarativeBase):
     pass
 
@@ -35,7 +63,8 @@ class Plan(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(64))
     total_uses: Mapped[int] = mapped_column(Integer)
-    valid_days: Mapped[int] = mapped_column(Integer)
+    # 有效期以分钟存储，支持小时/天级（激活时快照为用户的 expires_at）
+    valid_minutes: Mapped[int] = mapped_column(Integer)
     # 隐藏的套餐总 token 熔断（0 = 不限，仅靠单任务 cap 与每日全局熔断兜底）
     token_reserve: Mapped[int] = mapped_column(Integer, default=0)
     active: Mapped[bool] = mapped_column(Boolean, default=True)
