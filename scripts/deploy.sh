@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# git 部署：本地 push → 服务器 pull → 按变更重装/重构建 → 重启服务
+# git 部署：本地 push → 服务器 bare repo → checkout → 按变更重装/重构建 → 重启
+# 说明：服务器连不上 GitHub，故用服务器上的 bare repo(/opt/deerflow.git) 作中转。
+#   本地需要一个指向它的 remote：git remote add production 111.229.65.16:/opt/deerflow.git
+#   GitHub(origin) 仅作代码托管，两边都 push 保持一致。
 # 用法: bash scripts/deploy.sh  （在仓库根目录、main 分支、已 commit 的状态下执行）
 set -euo pipefail
 
@@ -12,7 +15,10 @@ if [[ -n "$(git status --porcelain)" ]]; then
 fi
 
 echo "==> push 到 GitHub (origin/$BRANCH)"
-git push origin "$BRANCH"
+git push origin "$BRANCH" || echo "（origin push 失败，继续部署）"
+
+echo "==> push 到服务器 bare repo"
+git push production "$BRANCH"
 
 echo "==> 服务器拉取并部署"
 ssh "$SERVER" bash -s <<REMOTE
