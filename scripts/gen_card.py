@@ -92,7 +92,11 @@ def main():
         with urllib.request.urlopen(req, timeout=30) as resp:
             data = json.load(resp)
     except urllib.error.HTTPError as e:
-        detail = json.load(e).get("detail", e.reason)
+        body = e.read().decode(errors="replace")
+        try:
+            detail = json.loads(body).get("detail", body)
+        except ValueError:
+            detail = body or e.reason
         sys.exit(f"发卡失败 [{e.code}]: {detail}")
     except urllib.error.URLError as e:
         sys.exit(f"连接失败: {e.reason}（检查 PLATFORM_API_BASE 与服务是否在跑）")
