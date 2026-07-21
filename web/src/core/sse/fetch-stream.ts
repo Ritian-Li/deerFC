@@ -3,20 +3,47 @@
 
 import { type StreamEvent } from "./StreamEvent";
 
+export class StreamError extends Error {
+  constructor(
+    public status: number,
+    public detail: string,
+  ) {
+    super(detail);
+    this.name = "StreamError";
+  }
+}
+
 export async function* fetchStream(
   url: string,
   init: RequestInit,
 ): AsyncIterable<StreamEvent> {
+  const { headers: initHeaders, ...restInit } = init;
   const response = await fetch(url, {
     method: "POST",
+    ...restInit,
     headers: {
       "Content-Type": "application/json",
       "Cache-Control": "no-cache",
+      ...((initHeaders as Record<string, string>) ?? {}),
     },
-    ...init,
   });
   if (response.status !== 200) {
-    throw new Error(`Failed to fetch from ${url}: ${response.status}`);
+    let detail = "";
+    try {
+      const body: unknown = await response.json();
+      if (body && typeof body === "object" && "detail" in body) {
+        const d = (body as { detail: unknown }).detail;
+        if (typeof d === "string") {
+          detail = d;
+        }
+      }
+    } catch {
+      // ignore body parse errors
+    }
+    throw new StreamError(
+      response.status,
+      detail || `Failed to fetch from ${url}: ${response.status}`,
+    );
   }
   // Read from response body, event by event. An event always ends with a '\n\n'.
   const reader = response.body

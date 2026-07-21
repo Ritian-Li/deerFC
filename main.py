@@ -108,13 +108,13 @@ if __name__ == "__main__":
     parser.add_argument(
         "--max_plan_iterations",
         type=int,
-        default=1,
+        default=20,
         help="Maximum number of plan iterations (default: 1)",
     )
     parser.add_argument(
         "--max_step_num",
         type=int,
-        default=3,
+        default=8,
         help="Maximum number of steps in a plan (default: 3)",
     )
     parser.add_argument("--debug", action="store_true", help="Enable debug logging")

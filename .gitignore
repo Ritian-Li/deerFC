@@ -24,3 +24,9 @@ conf.yaml
 # coverage report
 coverage.xml
 coverage/
+
+# platform runtime data
+deerflow_platform.db*
+deerflow_checkpoints.db*
+test_platform.db*
+generated_files/

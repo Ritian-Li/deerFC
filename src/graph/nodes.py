@@ -68,6 +68,8 @@ def background_investigation_node(
         background_investigation_results = get_web_search_tool(
             configurable.max_search_results
         ).invoke(query)
+    print(f"=============={SELECTED_SEARCH_ENGINE}================")
+    print(background_investigation_results)
     return Command(
         update={
             "background_investigation_results": json.dumps(

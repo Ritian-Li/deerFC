@@ -4,7 +4,7 @@
 import { LoadingOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
 import { Download, Headphones } from "lucide-react";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { LoadingAnimation } from "~/components/deer-flow/loading-animation";
 import { Markdown } from "~/components/deer-flow/markdown";
@@ -23,7 +23,7 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
-import type { Message, Option } from "~/core/messages";
+import type { Message } from "~/core/messages";
 import {
   closeResearch,
   openResearch,
@@ -37,13 +37,13 @@ import {
 import { parseJSON } from "~/core/utils";
 import { cn } from "~/lib/utils";
 
+import { RunFeedback } from "./run-feedback";
+
 export function MessageListView({
   className,
-  onFeedback,
   onSendMessage,
 }: {
   className?: string;
-  onFeedback?: (feedback: { option: Option }) => void;
   onSendMessage?: (
     message: string,
     options?: { interruptFeedback?: string },
@@ -88,11 +88,11 @@ export function MessageListView({
             messageId={messageId}
             waitForFeedback={waitingForFeedbackMessageId === messageId}
             interruptMessage={interruptMessage}
-            onFeedback={onFeedback}
             onSendMessage={onSendMessage}
             onToggleResearch={handleToggleResearch}
           />
         ))}
+        <RunFeedback className="mt-8 px-4" />
         <div className="flex h-8 w-full shrink-0"></div>
       </ul>
       {responding && (noOngoingResearch || !ongoingResearchIsOpen) && (
@@ -107,14 +107,12 @@ function MessageListItem({
   messageId,
   waitForFeedback,
   interruptMessage,
-  onFeedback,
   onSendMessage,
   onToggleResearch,
 }: {
   className?: string;
   messageId: string;
   waitForFeedback?: boolean;
-  onFeedback?: (feedback: { option: Option }) => void;
   interruptMessage?: Message | null;
   onSendMessage?: (
     message: string,
@@ -143,7 +141,6 @@ function MessageListItem({
               message={message}
               waitForFeedback={waitForFeedback}
               interruptMessage={interruptMessage}
-              onFeedback={onFeedback}
               onSendMessage={onSendMessage}
             />
           </div>
@@ -288,19 +285,16 @@ function ResearchCard({
   );
 }
 
-const GREETINGS = ["Cool", "Sounds great", "Looks good", "Great", "Awesome"];
 function PlanCard({
   className,
   message,
   interruptMessage,
-  onFeedback,
   waitForFeedback,
   onSendMessage,
 }: {
   className?: string;
   message: Message;
   interruptMessage?: Message | null;
-  onFeedback?: (feedback: { option: Option }) => void;
   onSendMessage?: (
     message: string,
     options?: { interruptFeedback?: string },
@@ -314,16 +308,30 @@ function PlanCard({
   }>(() => {
     return parseJSON(message.content ?? "", {});
   }, [message.content]);
-  const handleAccept = useCallback(async () => {
-    if (onSendMessage) {
-      onSendMessage(
-        `${GREETINGS[Math.floor(Math.random() * GREETINGS.length)]}! ${Math.random() > 0.5 ? "Let's get started." : "Let's start."}`,
-        {
-          interruptFeedback: "accepted",
-        },
-      );
+
+  // The server auto-accepts plans, so plan-confirmation UI is hidden.
+  // Safety net: if an interrupt still arrives (e.g. legacy backend),
+  // automatically accept it so the conversation never gets stuck.
+  const autoAcceptedRef = useRef(false);
+  useEffect(() => {
+    if (
+      !message.isStreaming &&
+      waitForFeedback &&
+      interruptMessage?.options?.length &&
+      !autoAcceptedRef.current &&
+      onSendMessage
+    ) {
+      autoAcceptedRef.current = true;
+      onSendMessage("好的，开始研究吧！", {
+        interruptFeedback: "accepted",
+      });
     }
-  }, [onSendMessage]);
+  }, [
+    message.isStreaming,
+    waitForFeedback,
+    interruptMessage,
+    onSendMessage,
+  ]);
   return (
     <Card className={cn("w-full", className)}>
       <CardHeader>
@@ -356,35 +364,6 @@ function PlanCard({
           </ul>
         )}
       </CardContent>
-      <CardFooter className="flex justify-end">
-        {!message.isStreaming && interruptMessage?.options?.length && (
-          <motion.div
-            className="flex gap-2"
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: 0.3 }}
-          >
-            {interruptMessage?.options.map((option) => (
-              <Button
-                key={option.value}
-                variant={option.value === "accepted" ? "default" : "outline"}
-                disabled={!waitForFeedback}
-                onClick={() => {
-                  if (option.value === "accepted") {
-                    void handleAccept();
-                  } else {
-                    onFeedback?.({
-                      option,
-                    });
-                  }
-                }}
-              >
-                {option.text}
-              </Button>
-            ))}
-          </motion.div>
-        )}
-      </CardFooter>
     </Card>
   );
 }

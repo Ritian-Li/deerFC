@@ -36,12 +36,37 @@ def _build_base_graph():
 def build_graph_with_memory():
     """Build and return the agent workflow graph with memory."""
     # use persistent memory to save conversation history
-    # TODO: be compatible with SQLite / PostgreSQL
     memory = MemorySaver()
 
     # build state graph
     builder = _build_base_graph()
     return builder.compile(checkpointer=memory)
+
+
+async def build_graph_with_persistence():
+    """Compile the graph with a durable checkpointer so runs survive restarts.
+
+    Postgres when PLATFORM_DATABASE_URL is postgres, SQLite otherwise.
+    """
+    from src.platform.db import get_database_url
+
+    url = get_database_url()
+    if url.startswith("postgresql"):
+        from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
+
+        conn_string = url.replace("+asyncpg", "")
+        cm = AsyncPostgresSaver.from_conn_string(conn_string)
+        saver = await cm.__aenter__()
+        await saver.setup()
+    else:
+        import aiosqlite
+        from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+
+        conn = await aiosqlite.connect("deerflow_checkpoints.db")
+        saver = AsyncSqliteSaver(conn)
+
+    builder = _build_base_graph()
+    return builder.compile(checkpointer=saver)
 
 
 def build_graph():

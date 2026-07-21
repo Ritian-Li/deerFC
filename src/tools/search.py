@@ -13,6 +13,7 @@ from src.config import SearchEngine, SELECTED_SEARCH_ENGINE
 from src.tools.tavily_search.tavily_search_results_with_images import (
     TavilySearchResultsWithImages,
 )
+from src.tools.spark_search.spark_api import SparkSearchTool
 
 from src.tools.decorators import create_logged_tool
 
@@ -23,6 +24,7 @@ LoggedTavilySearch = create_logged_tool(TavilySearchResultsWithImages)
 LoggedDuckDuckGoSearch = create_logged_tool(DuckDuckGoSearchResults)
 LoggedBraveSearch = create_logged_tool(BraveSearch)
 LoggedArxivSearch = create_logged_tool(ArxivQueryRun)
+LoggedSparkSearch = create_logged_tool(SparkSearchTool)
 
 
 # Get the selected search tool
@@ -53,6 +55,14 @@ def get_web_search_tool(max_search_results: int):
                 load_max_docs=max_search_results,
                 load_all_available_meta=True,
             ),
+        )
+    elif SELECTED_SEARCH_ENGINE == SearchEngine.SPARK.value:
+        return LoggedSparkSearch(
+            name="web_search",
+            max_results=max_search_results,
+            api_key=os.getenv("SPARK_API_KEY", ""),
+            app_id = os.getenv("SPARK_APP_ID", ""),
+            api_secret=os.getenv("SPARK_API_SECRET", "")
         )
     else:
         raise ValueError(f"Unsupported search engine: {SELECTED_SEARCH_ENGINE}")

@@ -17,8 +17,6 @@ import {
   FormMessage,
 } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import { Switch } from "~/components/ui/switch";
 import type { SettingsState } from "~/core/store";
 
 import type { Tab } from "./types";
@@ -75,28 +73,11 @@ export const GeneralTab: Tab = ({
         <h1 className="text-lg font-medium">General</h1>
       </header>
       <main>
+        <div className="text-muted-foreground bg-muted/50 mb-6 rounded-md border p-3 text-xs leading-relaxed">
+          研究计划由服务端自动确认执行，无需手动操作。以下研究参数仅供进阶调整，服务端设有上限，超出部分以服务端为准。
+        </div>
         <Form {...form}>
           <form className="space-y-8">
-            <FormField
-              control={form.control}
-              name="autoAcceptedPlan"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <div className="flex items-center gap-2">
-                      <Switch
-                        id="autoAcceptedPlan"
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                      />
-                      <Label className="text-sm" htmlFor="autoAcceptedPlan">
-                        Allow automatic acceptance of plans
-                      </Label>
-                    </div>
-                  </FormControl>
-                </FormItem>
-              )}
-            />
             <FormField
               control={form.control}
               name="maxPlanIterations"

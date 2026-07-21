@@ -75,9 +75,39 @@ export interface InterruptEvent
     }
   > {}
 
-export type ChatEvent =
+export interface RunReceipt {
+  model: string;
+  provider?: string;
+  total_tokens: number;
+  duration_ms?: number;
+}
+
+export interface RunCompleteEvent {
+  type: "run_complete";
+  data: {
+    thread_id: string;
+    run_id: string;
+    receipt: RunReceipt;
+    remaining_uses: number;
+  };
+}
+
+export interface RunErrorEvent {
+  type: "run_error";
+  data: {
+    thread_id: string;
+    run_id: string;
+    content: string;
+    remaining_uses: number;
+  };
+}
+
+/** Events that carry (partial) agent messages. */
+export type ChatMessageEvent =
   | MessageChunkEvent
   | ToolCallsEvent
   | ToolCallChunksEvent
   | ToolCallResultEvent
   | InterruptEvent;
+
+export type ChatEvent = ChatMessageEvent | RunCompleteEvent | RunErrorEvent;

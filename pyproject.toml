@@ -32,6 +32,12 @@ dependencies = [
     "arxiv>=2.2.0",
     "mcp>=1.6.0",
     "langchain-mcp-adapters>=0.0.9",
+    "sqlalchemy>=2.0",
+    "aiosqlite==0.21.0",
+    "asyncpg>=0.29.0",
+    "pyjwt>=2.8.0",
+    "langgraph-checkpoint-sqlite>=2.0.0",
+    "langgraph-checkpoint-postgres>=2.0.0",
 ]
 
 [project.optional-dependencies]
@@ -68,3 +74,5 @@ extend-exclude = '''
 # in the root of the project.
 ^/build/
 '''
+[tool.uv]
+index-url = "https://mirrors.tuna.tsinghua.edu.cn/pypi/web/simple"

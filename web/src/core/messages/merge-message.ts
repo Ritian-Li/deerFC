@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: MIT
 
 import type {
-  ChatEvent,
+  ChatMessageEvent,
   InterruptEvent,
   MessageChunkEvent,
   ToolCallChunksEvent,
@@ -13,7 +13,7 @@ import { deepClone } from "../utils/deep-clone";
 
 import type { Message } from "./types";
 
-export function mergeMessage(message: Message, event: ChatEvent) {
+export function mergeMessage(message: Message, event: ChatMessageEvent) {
   if (event.type === "message_chunk") {
     mergeTextMessage(message, event);
   } else if (event.type === "tool_calls" || event.type === "tool_call_chunks") {

@@ -13,7 +13,10 @@ class SearchEngine(enum.Enum):
     DUCKDUCKGO = "duckduckgo"
     BRAVE_SEARCH = "brave_search"
     ARXIV = "arxiv"
+    SPARK = "spark"
 
 
 # Tool configuration
 SELECTED_SEARCH_ENGINE = os.getenv("SEARCH_API", SearchEngine.TAVILY.value)
+print(f'current search engine: {SELECTED_SEARCH_ENGINE}')
+SEARCH_MAX_RESULTS = 3

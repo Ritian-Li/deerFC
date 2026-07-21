@@ -15,7 +15,6 @@ import {
 } from "~/components/ui/card";
 import { fastForwardReplay } from "~/core/api";
 import { useReplayMetadata } from "~/core/api/hooks";
-import type { Option } from "~/core/messages";
 import { useReplay } from "~/core/replay";
 import { sendMessage, useMessageIds, useStore } from "~/core/store";
 import { env } from "~/env";
@@ -34,7 +33,6 @@ export function MessagesBlock({ className }: { className?: string }) {
   const { title: replayTitle, hasError: replayHasError } = useReplayMetadata();
   const [replayStarted, setReplayStarted] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
-  const [feedback, setFeedback] = useState<{ option: Option } | null>(null);
   const handleSend = useCallback(
     async (message: string, options?: { interruptFeedback?: string }) => {
       const abortController = new AbortController();
@@ -43,8 +41,7 @@ export function MessagesBlock({ className }: { className?: string }) {
         await sendMessage(
           message,
           {
-            interruptFeedback:
-              options?.interruptFeedback ?? feedback?.option.value,
+            interruptFeedback: options?.interruptFeedback,
           },
           {
             abortSignal: abortController.signal,
@@ -52,21 +49,12 @@ export function MessagesBlock({ className }: { className?: string }) {
         );
       } catch {}
     },
-    [feedback],
+    [],
   );
   const handleCancel = useCallback(() => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
   }, []);
-  const handleFeedback = useCallback(
-    (feedback: { option: Option }) => {
-      setFeedback(feedback);
-    },
-    [setFeedback],
-  );
-  const handleRemoveFeedback = useCallback(() => {
-    setFeedback(null);
-  }, [setFeedback]);
   const handleStartReplay = useCallback(() => {
     setReplayStarted(true);
     void sendMessage();
@@ -78,11 +66,7 @@ export function MessagesBlock({ className }: { className?: string }) {
   }, [fastForwarding]);
   return (
     <div className={cn("flex h-full flex-col", className)}>
-      <MessageListView
-        className="flex flex-grow"
-        onFeedback={handleFeedback}
-        onSendMessage={handleSend}
-      />
+      <MessageListView className="flex flex-grow" onSendMessage={handleSend} />
       {!isReplay ? (
         <div className="relative flex h-42 shrink-0 pb-4">
           {!responding && messageCount === 0 && (
@@ -94,10 +78,8 @@ export function MessagesBlock({ className }: { className?: string }) {
           <InputBox
             className="h-full w-full"
             responding={responding}
-            feedback={feedback}
             onSend={handleSend}
             onCancel={handleCancel}
-            onRemoveFeedback={handleRemoveFeedback}
           />
         </div>
       ) : (

@@ -8,6 +8,7 @@ import { extractReplayIdFromSearchParams } from "../replay/get-replay-id";
 import { fetchStream } from "../sse";
 import { sleep } from "../utils";
 
+import { authHeaders } from "./request";
 import { resolveServiceURL } from "./resolve-service-url";
 import type { ChatEvent } from "./types";
 
@@ -41,12 +42,38 @@ export async function* chatStream(
     return yield* chatReplayStream(userMessage, params, options);
   }
   const stream = fetchStream(resolveServiceURL("chat/stream"), {
+    headers: authHeaders(),
     body: JSON.stringify({
       messages: [{ role: "user", content: userMessage }],
       ...params,
     }),
     signal: options.abortSignal,
   });
+  for await (const event of stream) {
+    yield {
+      type: event.event,
+      data: JSON.parse(event.data),
+    } as ChatEvent;
+  }
+}
+
+/**
+ * Reconnect to an in-flight task: the server replays all past events of the
+ * thread and keeps streaming new ones. Used after a page refresh or when the
+ * mobile browser resumes from background.
+ */
+export async function* resumeChatStream(
+  threadId: string,
+  options: { abortSignal?: AbortSignal } = {},
+): AsyncIterable<ChatEvent> {
+  const stream = fetchStream(
+    resolveServiceURL(`chat/stream/${encodeURIComponent(threadId)}`),
+    {
+      method: "GET",
+      headers: authHeaders(),
+      signal: options.abortSignal,
+    },
+  );
   for await (const event of stream) {
     yield {
       type: event.event,

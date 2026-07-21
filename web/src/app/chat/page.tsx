@@ -3,17 +3,20 @@
 
 "use client";
 
-import { GithubOutlined } from "@ant-design/icons";
+import { History } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { Suspense } from "react";
 
+import { AuthGuard } from "~/components/deer-flow/auth-guard";
 import { Button } from "~/components/ui/button";
 
 import { Logo } from "../../components/deer-flow/logo";
 import { ThemeToggle } from "../../components/deer-flow/theme-toggle";
 import { Tooltip } from "../../components/deer-flow/tooltip";
 import { SettingsDialog } from "../settings/dialogs/settings-dialog";
+
+import { UsageBar } from "./components/usage-bar";
 
 const Main = dynamic(() => import("./main"), {
   ssr: false,
@@ -26,27 +29,31 @@ const Main = dynamic(() => import("./main"), {
 
 export default function HomePage() {
   return (
-    <div className="flex h-screen w-screen justify-center overscroll-none">
-      <header className="fixed top-0 left-0 flex h-12 w-full items-center justify-between px-4">
-        <Logo />
-        <div className="flex items-center">
-          <Tooltip title="Star DeerFlow on GitHub">
-            <Button variant="ghost" size="icon" asChild>
-              <Link
-                href="https://github.com/bytedance/deer-flow"
-                target="_blank"
-              >
-                <GithubOutlined />
-              </Link>
-            </Button>
-          </Tooltip>
-          <ThemeToggle />
-          <Suspense>
-            <SettingsDialog />
-          </Suspense>
-        </div>
-      </header>
-      <Main />
-    </div>
+    <AuthGuard>
+      <div className="flex h-screen w-screen justify-center overscroll-none">
+        <header className="bg-app/80 fixed top-0 left-0 z-40 flex h-12 w-full items-center justify-between px-2 backdrop-blur-lg sm:px-4">
+          <div className="hidden sm:block">
+            <Logo />
+          </div>
+          <div className="flex w-full items-center justify-between gap-1 sm:w-auto sm:justify-end">
+            <UsageBar />
+            <div className="flex items-center">
+              <Tooltip title="任务历史">
+                <Button variant="ghost" size="icon" asChild>
+                  <Link href="/tasks">
+                    <History />
+                  </Link>
+                </Button>
+              </Tooltip>
+              <ThemeToggle />
+              <Suspense>
+                <SettingsDialog />
+              </Suspense>
+            </div>
+          </div>
+        </header>
+        <Main />
+      </div>
+    </AuthGuard>
   );
 }

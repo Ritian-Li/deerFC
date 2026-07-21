@@ -6,14 +6,24 @@ import { toast } from "sonner";
 import { create } from "zustand";
 import { useShallow } from "zustand/react/shallow";
 
-import { chatStream, generatePodcast } from "../api";
+import {
+  chatStream,
+  generatePodcast,
+  resumeChatStream,
+  type ChatEvent,
+  type RunReceipt,
+} from "../api";
+import { clearToken, redirectToLogin } from "../api/request";
 import type { Message } from "../messages";
 import { mergeMessage } from "../messages";
+import { StreamError } from "../sse";
 import { parseJSON } from "../utils";
 
+import { openRenewDialog, setRemainingUses } from "./auth-store";
 import { getChatStreamSettings } from "./settings-store";
 
 const THREAD_ID = nanoid();
+const ONGOING_THREAD_KEY = "deerflow.ongoing-thread";
 
 export const useStore = create<{
   responding: boolean;
@@ -26,6 +36,8 @@ export const useStore = create<{
   researchActivityIds: Map<string, string[]>;
   ongoingResearchId: string | null;
   openResearchId: string | null;
+  lastReceipt: RunReceipt | null;
+  lastRunError: string | null;
 
   appendMessage: (message: Message) => void;
   updateMessage: (message: Message) => void;
@@ -36,6 +48,8 @@ export const useStore = create<{
 }>((set) => ({
   responding: false,
   threadId: THREAD_ID,
+  lastReceipt: null,
+  lastRunError: null,
   messageIds: [],
   messages: new Map<string, Message>(),
   researchIds: [],
@@ -74,6 +88,22 @@ export const useStore = create<{
   },
 }));
 
+function getThreadId() {
+  return useStore.getState().threadId ?? THREAD_ID;
+}
+
+function saveOngoingThread(threadId: string) {
+  try {
+    localStorage.setItem(ONGOING_THREAD_KEY, threadId);
+  } catch {}
+}
+
+function clearOngoingThread() {
+  try {
+    localStorage.removeItem(ONGOING_THREAD_KEY);
+  } catch {}
+}
+
 export async function sendMessage(
   content?: string,
   {
@@ -83,23 +113,27 @@ export async function sendMessage(
   } = {},
   options: { abortSignal?: AbortSignal } = {},
 ) {
+  const threadId = getThreadId();
   if (content != null) {
     appendMessage({
       id: nanoid(),
-      threadId: THREAD_ID,
+      threadId,
       role: "user",
       content: content,
       contentChunks: [content],
     });
   }
+  useStore.setState({ lastReceipt: null, lastRunError: null });
 
   const settings = getChatStreamSettings();
   const stream = chatStream(
     content ?? "[REPLAY]",
     {
-      thread_id: THREAD_ID,
+      thread_id: threadId,
       interrupt_feedback: interruptFeedback,
-      auto_accepted_plan: settings.autoAcceptedPlan,
+      // The server enforces auto-accepted plans, so the plan-confirmation
+      // UI is skipped entirely on the client side as well.
+      auto_accepted_plan: true,
       enable_background_investigation:
         settings.enableBackgroundInvestigation ?? true,
       max_plan_iterations: settings.maxPlanIterations,
@@ -109,11 +143,70 @@ export async function sendMessage(
     },
     options,
   );
+  if (
+    typeof window !== "undefined" &&
+    !window.location.search.includes("mock") &&
+    !window.location.search.includes("replay=")
+  ) {
+    // Remember the in-flight thread so we can reconnect after a refresh.
+    saveOngoingThread(threadId);
+  }
+  await consumeStream(stream, { interruptFeedback });
+}
 
+let resuming = false;
+/**
+ * If a task was still running when the page was refreshed (or the mobile
+ * browser was sent to background), reconnect to it and replay all events.
+ */
+export async function resumeOngoingTask() {
+  if (typeof window === "undefined" || resuming) {
+    return;
+  }
+  let threadId: string | null = null;
+  try {
+    threadId = localStorage.getItem(ONGOING_THREAD_KEY);
+  } catch {}
+  if (!threadId || useStore.getState().responding) {
+    return;
+  }
+  resuming = true;
+  useStore.setState({ threadId });
+  try {
+    await consumeStream(resumeChatStream(threadId));
+  } finally {
+    resuming = false;
+  }
+}
+
+async function consumeStream(
+  stream: AsyncIterable<ChatEvent>,
+  {
+    interruptFeedback,
+  }: {
+    interruptFeedback?: string;
+  } = {},
+) {
   setResponding(true);
   let messageId: string | undefined;
   try {
     for await (const event of stream) {
+      if (event.type === "run_complete") {
+        useStore.setState({
+          lastReceipt: event.data.receipt,
+          lastRunError: null,
+        });
+        setRemainingUses(event.data.remaining_uses);
+        clearOngoingThread();
+        continue;
+      }
+      if (event.type === "run_error") {
+        useStore.setState({ lastRunError: event.data.content });
+        setRemainingUses(event.data.remaining_uses);
+        clearOngoingThread();
+        useStore.getState().setOngoingResearch(null);
+        continue;
+      }
       const { type, data } = event;
       messageId = data.id;
       let message: Message | undefined;
@@ -138,21 +231,53 @@ export async function sendMessage(
         updateMessage(message);
       }
     }
-  } catch {
-    toast("An error occurred while generating the response. Please try again.");
-    // Update message status.
-    // TODO: const isAborted = (error as Error).name === "AbortError";
-    if (messageId != null) {
-      const message = getMessage(messageId);
-      if (message?.isStreaming) {
-        message.isStreaming = false;
-        useStore.getState().updateMessage(message);
-      }
-    }
-    useStore.getState().setOngoingResearch(null);
+    clearOngoingThread();
+  } catch (error) {
+    handleStreamError(error, messageId);
   } finally {
     setResponding(false);
   }
+}
+
+function handleStreamError(error: unknown, messageId?: string) {
+  const isAborted = (error as Error | undefined)?.name === "AbortError";
+  if (isAborted) {
+    // User cancelled on purpose; nothing scary to report.
+    clearOngoingThread();
+  } else if (error instanceof StreamError) {
+    if (error.status === 401) {
+      clearOngoingThread();
+      clearToken();
+      redirectToLogin();
+      return;
+    } else if (error.status === 402) {
+      clearOngoingThread();
+      openRenewDialog();
+      toast("剩余次数不足，输入新卡密即可继续使用");
+    } else if (error.status === 404) {
+      // Resuming a thread that no longer exists; drop it silently.
+      clearOngoingThread();
+    } else if (error.status === 409) {
+      toast("已有任务正在进行中，请等它完成后再试");
+    } else if (error.status === 429) {
+      toast("操作有点频繁，请稍等片刻再试");
+    } else if (error.status === 503) {
+      toast(error.detail || "服务正忙，请稍后再试");
+    } else {
+      toast(error.detail || "出错了，请稍后重试");
+    }
+  } else {
+    toast("网络开小差了，请检查网络后重试");
+  }
+  // Finalize any half-streamed message.
+  if (messageId != null) {
+    const message = getMessage(messageId);
+    if (message?.isStreaming) {
+      message.isStreaming = false;
+      useStore.getState().updateMessage(message);
+    }
+  }
+  useStore.getState().setOngoingResearch(null);
 }
 
 function setResponding(value: boolean) {
