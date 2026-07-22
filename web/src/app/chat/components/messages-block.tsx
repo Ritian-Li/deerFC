@@ -16,7 +16,14 @@ import {
 import { fastForwardReplay } from "~/core/api";
 import { useReplayMetadata } from "~/core/api/hooks";
 import { useReplay } from "~/core/replay";
-import { sendMessage, useMessageIds, useStore } from "~/core/store";
+import { isFileSkill } from "~/core/skills";
+import {
+  sendFileSkillMessage,
+  sendMessage,
+  useCurrentSkill,
+  useMessageIds,
+  useStore,
+} from "~/core/store";
 import { cn } from "~/lib/utils";
 
 import { ConversationStarter } from "./conversation-starter";
@@ -31,9 +38,22 @@ export function MessagesBlock({ className }: { className?: string }) {
   const { isReplay } = useReplay();
   const { title: replayTitle, hasError: replayHasError } = useReplayMetadata();
   const [replayStarted, setReplayStarted] = useState(false);
+  const currentSkill = useCurrentSkill();
   const abortControllerRef = useRef<AbortController | null>(null);
+  // Prefill payload for the input box; the counter forces a re-fill even when
+  // the same example text is clicked twice.
+  const [inputPrefill, setInputPrefill] = useState<{
+    text: string;
+    seq: number;
+  } | null>(null);
+  const prefillSeq = useRef(0);
   const handleSend = useCallback(
     async (message: string, options?: { interruptFeedback?: string }) => {
+      if (isFileSkill(currentSkill)) {
+        // File-generating skill: synchronous endpoint, no SSE.
+        await sendFileSkillMessage(currentSkill, message);
+        return;
+      }
       const abortController = new AbortController();
       abortControllerRef.current = abortController;
       try {
@@ -48,8 +68,12 @@ export function MessagesBlock({ className }: { className?: string }) {
         );
       } catch {}
     },
-    [],
+    [currentSkill],
   );
+  const handleFillExample = useCallback((text: string) => {
+    prefillSeq.current += 1;
+    setInputPrefill({ text, seq: prefillSeq.current });
+  }, []);
   const handleCancel = useCallback(() => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
@@ -70,13 +94,16 @@ export function MessagesBlock({ className }: { className?: string }) {
         <div className="relative flex h-42 shrink-0 pb-4">
           {!responding && messageCount === 0 && (
             <ConversationStarter
-              className="absolute top-[-218px] left-0"
-              onSend={handleSend}
+              className="absolute top-[-238px] left-0"
+              onFillExample={handleFillExample}
             />
           )}
           <InputBox
             className="h-full w-full"
-            responding={responding}
+            responding={isFileSkill(currentSkill) ? false : responding}
+            disabled={isFileSkill(currentSkill) ? responding : false}
+            value={inputPrefill?.text}
+            key={inputPrefill?.seq}
             onSend={handleSend}
             onCancel={handleCancel}
           />

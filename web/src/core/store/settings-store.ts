@@ -4,6 +4,7 @@
 import { create } from "zustand";
 
 import type { MCPServerMetadata, SimpleMCPServerMetadata } from "../mcp";
+import { DEFAULT_SKILL_ID, type SkillId } from "../skills";
 
 const SETTINGS_KEY = "deerflow.settings";
 
@@ -15,6 +16,8 @@ const DEFAULT_SETTINGS: SettingsState = {
     maxStepNum: 3,
     maxSearchResults: 3,
   },
+  /** Currently selected skill in the chat input. */
+  currentSkill: DEFAULT_SKILL_ID,
   mcp: {
     servers: [],
   },
@@ -28,6 +31,7 @@ export type SettingsState = {
     maxStepNum: number;
     maxSearchResults: number;
   };
+  currentSkill: SkillId;
   mcp: {
     servers: MCPServerMetadata[];
   };
@@ -58,6 +62,7 @@ export const loadSettings = () => {
           DEFAULT_SETTINGS.general[key as keyof SettingsState["general"]];
       }
     }
+    settings.currentSkill ??= DEFAULT_SETTINGS.currentSkill;
 
     try {
       useSettingsStore.setState(settings);
@@ -124,6 +129,15 @@ export const getChatStreamSettings = () => {
     mcpSettings,
   };
 };
+
+export function useCurrentSkill() {
+  return useSettingsStore((state) => state.currentSkill);
+}
+
+export function setCurrentSkill(skill: SkillId) {
+  useSettingsStore.setState({ currentSkill: skill });
+  saveSettings();
+}
 
 export function setEnableBackgroundInvestigation(value: boolean) {
   useSettingsStore.setState((state) => ({

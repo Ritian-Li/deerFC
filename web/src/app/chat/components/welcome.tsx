@@ -17,16 +17,8 @@ export function Welcome({ className }: { className?: string }) {
         👋 你好呀！
       </h3>
       <div className="text-muted-foreground px-4 text-center text-lg">
-        欢迎使用{" "}
-        <a
-          href="https://github.com/bytedance/deer-flow"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="hover:underline"
-        >
-          AI 深度研究助手
-        </a>
-        ，一个基于前沿大语言模型的深度研究助手，帮你联网检索、整理信息、完成复杂任务。
+        选一个技能，一句话就能出成品：🔍 深度研究、📊 做 PPT、📝 智能组卷、📚
+        教案生成。下方点一个例子即可开始，内容可自由修改。
       </div>
     </motion.div>
   );

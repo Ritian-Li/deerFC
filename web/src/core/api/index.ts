@@ -3,6 +3,7 @@
 
 export * from "./auth";
 export * from "./chat";
+export * from "./generate";
 export * from "./mcp";
 export * from "./podcast";
 export * from "./request";

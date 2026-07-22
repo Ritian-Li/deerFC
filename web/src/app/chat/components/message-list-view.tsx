@@ -3,7 +3,7 @@
 
 import { LoadingOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
-import { Download, Headphones } from "lucide-react";
+import { CheckCircle2, Download, FileText, Headphones } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { LoadingAnimation } from "~/components/deer-flow/loading-animation";
@@ -23,7 +23,9 @@ import {
   CardHeader,
   CardTitle,
 } from "~/components/ui/card";
+import { downloadBlob } from "~/core/api";
 import type { Message } from "~/core/messages";
+import { getSkill, type FileSkillId } from "~/core/skills";
 import {
   closeResearch,
   openResearch,
@@ -131,10 +133,17 @@ function MessageListItem({
       message.agent === "coordinator" ||
       message.agent === "planner" ||
       message.agent === "podcast" ||
+      message.skillResult ||
       startOfResearch
     ) {
       let content: React.ReactNode;
-      if (message.agent === "planner") {
+      if (message.skillResult) {
+        content = (
+          <div className="w-full px-4">
+            <SkillResultCard message={message} />
+          </div>
+        );
+      } else if (message.agent === "planner") {
         content = (
           <div className="w-full px-4">
             <PlanCard
@@ -362,6 +371,71 @@ function PlanCard({
               </li>
             ))}
           </ul>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function SkillResultCard({
+  className,
+  message,
+}: {
+  className?: string;
+  message: Message;
+}) {
+  const result = message.skillResult!;
+  const skill = getSkill(result.skill as FileSkillId);
+  const handleDownload = useCallback(() => {
+    if (result.blob && result.filename) {
+      downloadBlob(result.blob, result.filename);
+    }
+  }, [result.blob, result.filename]);
+
+  return (
+    <Card className={cn("w-full max-w-full", className)}>
+      <CardHeader>
+        <CardTitle>
+          <div className="flex items-center gap-2 text-lg font-medium">
+            <span>{skill.emoji}</span>
+            <span>{skill.name}</span>
+          </div>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {result.status === "loading" && (
+          <div className="text-muted-foreground flex items-center gap-2 text-sm">
+            <LoadingOutlined />
+            <RainbowText animated>{result.loadingText}</RainbowText>
+          </div>
+        )}
+        {result.status === "success" && (
+          <div className="flex flex-col gap-3">
+            <div className="flex items-center gap-2 text-sm font-medium text-green-600">
+              <CheckCircle2 size={18} className="shrink-0" />
+              <span>成品已生成</span>
+            </div>
+            <div className="bg-muted/50 flex items-center gap-2 rounded-lg border px-3 py-2">
+              <FileText size={16} className="text-muted-foreground shrink-0" />
+              <span className="min-w-0 flex-1 truncate text-sm" title={result.filename}>
+                {result.filename}
+              </span>
+            </div>
+            <Button className="w-full sm:w-auto" onClick={handleDownload}>
+              <Download size={16} />
+              下载
+            </Button>
+          </div>
+        )}
+        {result.status === "error" && (
+          <div className="flex flex-col gap-1">
+            <div className="text-muted-foreground text-sm">
+              {result.errorText ?? "生成失败，未扣除次数，请重试"}
+            </div>
+            <div className="text-xs text-green-600">
+              本次未扣除次数，可放心重试。
+            </div>
+          </div>
         )}
       </CardContent>
     </Card>

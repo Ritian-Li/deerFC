@@ -9,17 +9,19 @@ import { useShallow } from "zustand/react/shallow";
 import {
   chatStream,
   generatePodcast,
+  generateSkillFile,
   resumeChatStream,
   type ChatEvent,
   type RunReceipt,
 } from "../api";
-import { clearToken, redirectToLogin } from "../api/request";
+import { ApiError, clearToken, redirectToLogin } from "../api/request";
 import type { Message } from "../messages";
 import { mergeMessage } from "../messages";
+import { FILE_SKILL_CONFIG, type FileSkillId } from "../skills";
 import { StreamError } from "../sse";
 import { parseJSON } from "../utils";
 
-import { openRenewDialog, setRemainingUses } from "./auth-store";
+import { openRenewDialog, refreshProfile, setRemainingUses } from "./auth-store";
 import { getChatStreamSettings } from "./settings-store";
 
 const THREAD_ID = nanoid();
@@ -152,6 +154,99 @@ export async function sendMessage(
     saveOngoingThread(threadId);
   }
   await consumeStream(stream, { interruptFeedback });
+}
+
+/**
+ * Send a message for a file-generating skill (PPT / exam / lesson).
+ * Does NOT use SSE. Inserts a user message + an assistant "generating…"
+ * placeholder card, calls the synchronous endpoint, then swaps the card to a
+ * success (download) or error state. Refreshes the quota bar on success.
+ * 401/402 are handled globally by authFetch.
+ */
+export async function sendFileSkillMessage(skill: FileSkillId, content: string) {
+  const threadId = getThreadId();
+  const config = FILE_SKILL_CONFIG[skill];
+
+  appendMessage({
+    id: nanoid(),
+    threadId,
+    role: "user",
+    content,
+    contentChunks: [content],
+  });
+
+  const placeholderId = nanoid();
+  appendMessage({
+    id: placeholderId,
+    threadId,
+    role: "assistant",
+    content: "",
+    contentChunks: [],
+    isStreaming: true,
+    skillResult: {
+      skill,
+      status: "loading",
+      loadingText: config.loadingText,
+    },
+  });
+
+  setResponding(true);
+  try {
+    const { blob, filename } = await generateSkillFile(skill, content);
+    updateSkillMessage(placeholderId, {
+      skill,
+      status: "success",
+      loadingText: config.loadingText,
+      filename,
+      blob,
+    });
+    // Success charges 1 use; refresh the quota bar.
+    void refreshProfile();
+  } catch (error) {
+    if (error instanceof ApiError && (error.status === 401 || error.status === 402)) {
+      // authFetch already redirected / opened the renew dialog. Drop the
+      // placeholder so the UI isn't left with a stuck loading card.
+      removeMessage(placeholderId);
+      return;
+    }
+    const detail =
+      error instanceof ApiError && error.detail
+        ? error.detail
+        : "生成失败，未扣除次数，请重试";
+    updateSkillMessage(placeholderId, {
+      skill,
+      status: "error",
+      loadingText: config.loadingText,
+      errorText: detail,
+    });
+  } finally {
+    setResponding(false);
+  }
+}
+
+function updateSkillMessage(
+  messageId: string,
+  skillResult: Message["skillResult"],
+) {
+  const message = getMessage(messageId);
+  if (message) {
+    useStore.getState().updateMessage({
+      ...message,
+      isStreaming: false,
+      skillResult,
+    });
+  }
+}
+
+function removeMessage(messageId: string) {
+  useStore.setState((state) => {
+    const messages = new Map(state.messages);
+    messages.delete(messageId);
+    return {
+      messageIds: state.messageIds.filter((id) => id !== messageId),
+      messages,
+    };
+  });
 }
 
 let resuming = false;
