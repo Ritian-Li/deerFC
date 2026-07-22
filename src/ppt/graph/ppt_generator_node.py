@@ -24,7 +24,9 @@ def ppt_generator_node(state: PPTState):
     chrome_path = os.getenv("CHROME_PATH", "")
     if chrome_path:
         cmd += ["--browser-path", chrome_path]
-    result = subprocess.run(cmd, capture_output=True, text=True)
+    # start_new_session：把 marp+chrome 放进独立会话，隔离 uvicorn/asyncio 的
+    # SIGCHLD 处理——否则从服务进程内 spawn 时 puppeteer 连不上 chrome 会 30s 超时
+    result = subprocess.run(cmd, capture_output=True, text=True, start_new_session=True)
     # remove the temp file
     if os.path.exists(state["ppt_file_path"]):
         os.remove(state["ppt_file_path"])
