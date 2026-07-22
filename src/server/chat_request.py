@@ -56,6 +56,9 @@ class ChatRequest(BaseModel):
     sub_skill: Optional[str] = Field(
         None, description="研究子能力（finance/market/academic/policy），缺省为通用"
     )
+    attachment_ids: Optional[List[str]] = Field(
+        None, description="随请求携带的附件 id 列表（先经 /api/attachments 上传）"
+    )
 
 
 class TTSRequest(BaseModel):
@@ -83,12 +86,18 @@ class GeneratePPTRequest(BaseModel):
     sub_skill: Optional[str] = Field(
         None, description="PPT 子能力（workreport/courseware/pitch/training）"
     )
+    attachment_ids: Optional[List[str]] = Field(
+        None, description="随请求携带的附件 id 列表（先经 /api/attachments 上传）"
+    )
 
 
 class SkillPromptRequest(BaseModel):
     prompt: str = Field(..., description="用户对该 skill 的一句话需求")
     sub_skill: Optional[str] = Field(
         None, description="子能力 id，缺省走该技能默认行为"
+    )
+    attachment_ids: Optional[List[str]] = Field(
+        None, description="随请求携带的附件 id 列表（先经 /api/attachments 上传）"
     )
 
 

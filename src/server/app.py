@@ -8,7 +8,7 @@ import os
 from contextlib import asynccontextmanager
 from uuid import uuid4
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, File, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, Response, StreamingResponse
 
@@ -39,6 +39,7 @@ from src.server.chat_request import (
 )
 from src.server.mcp_request import MCPServerMetadataRequest, MCPServerMetadataResponse
 from src.server.mcp_utils import load_mcp_tools
+from src.skills import attachments as att
 from src.skills.presets import resolve_sub_skill, skill_label
 from src.tools import VolcengineTTS
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -86,6 +87,43 @@ app.include_router(runs_router)
 app.include_router(admin_router)
 
 
+def _consume_attachments(
+    user_id: int, ids: list[str] | None, allow_images: bool = False
+) -> tuple[str, list[str]]:
+    """附件 → (参考资料文本块, 图片 data URL 列表)。
+
+    非法 id / 数量超限 → 400；图片出现在不支持的技能 → 400。
+    未携带附件返回 ("", [])，各端点行为与 v1 完全一致。
+    """
+    if not ids:
+        return "", []
+    try:
+        doc_ids, image_ids = att.split_ids_by_kind(user_id, ids)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    if image_ids and not allow_images:
+        raise HTTPException(
+            status_code=400, detail="该技能暂不支持图片附件，请上传文档文件"
+        )
+    ref = att.build_reference_block(att.load_parsed_texts(user_id, doc_ids))
+    urls = att.load_image_data_urls(user_id, image_ids) if allow_images else []
+    return ref, urls
+
+
+@app.post("/api/attachments")
+async def upload_attachment(
+    file: UploadFile = File(...), user: User = Depends(get_current_user)
+):
+    """上传附件并解析（不扣次）。返回 {id, name, kind, chars, error}."""
+    data = await file.read()
+    if len(data) > att.MAX_FILE_BYTES:
+        raise HTTPException(status_code=413, detail="文件过大，单个文件不能超过 15MB")
+    try:
+        return att.save_attachment(user.id, file.filename or "附件", data)
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 async def _stream_from_handle(handle: runtime.RunHandle):
     queue = handle.subscribe()
     while True:
@@ -101,6 +139,10 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
     if thread_id == "__default__":
         thread_id = str(uuid4())
     sub_id, preset_text = resolve_sub_skill("research", request.sub_skill)
+    # 附件校验在建 run 之前（校验失败 400，不产生 run 记录）
+    ref_block, image_urls = _consume_attachments(
+        user.id, request.attachment_ids, allow_images=True
+    )
     handle, model_conf = await precheck_and_create_run(
         user.id, thread_id, skill_label("research", sub_id)
     )
@@ -108,6 +150,14 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
     # 子能力预设注入：拼在最后一条用户消息尾部，planner/reporter 全程可见
     if preset_text and messages and isinstance(messages[-1].get("content"), str):
         messages[-1]["content"] += f"\n\n【报告要求】{preset_text}"
+    if ref_block and messages and isinstance(messages[-1].get("content"), str):
+        messages[-1]["content"] += ref_block
+    # 图片附件：最后一条用户消息升级为 multimodal content。
+    # 上游模型无视觉能力时任务失败→不扣次（现状兜底），UI 不承诺识图。
+    if image_urls and messages and isinstance(messages[-1].get("content"), str):
+        messages[-1]["content"] = [
+            {"type": "text", "text": messages[-1]["content"]}
+        ] + [{"type": "image_url", "image_url": {"url": u}} for u in image_urls]
     input_ = {
         "messages": messages,
         "plan_iterations": 0,
@@ -277,9 +327,11 @@ async def generate_ppt(
 
     workflow = build_ppt_graph()
     sub_id, preset_text = resolve_sub_skill("ppt", request.sub_skill)
+    ref_block, _ = _consume_attachments(user.id, request.attachment_ids)
     ppt_input = request.content
     if preset_text:
         ppt_input = f"【制作要求】{preset_text}\n\n主题：{request.content}"
+    ppt_input += ref_block
     handle, meter, final_state = await _run_sync_skill(
         user,
         skill_label("ppt", sub_id),
@@ -324,10 +376,12 @@ async def generate_exam_endpoint(
     from src.skills import generate_exam
 
     sub_id, preset_text = resolve_sub_skill("exam", request.sub_skill)
+    ref_block, _ = _consume_attachments(user.id, request.attachment_ids)
+    prompt = request.prompt + ref_block
     return await _run_docx_skill(
         user,
         skill_label("exam", sub_id),
-        lambda config: generate_exam(request.prompt, config, preset_text=preset_text),
+        lambda config: generate_exam(prompt, config, preset_text=preset_text),
         "exam.docx",
     )
 
@@ -340,11 +394,13 @@ async def generate_lesson_endpoint(
     from src.skills import generate_lesson
 
     sub_id, preset_text = resolve_sub_skill("lesson", request.sub_skill)
+    ref_block, _ = _consume_attachments(user.id, request.attachment_ids)
+    prompt = request.prompt + ref_block
     return await _run_docx_skill(
         user,
         skill_label("lesson", sub_id),
         lambda config: generate_lesson(
-            request.prompt, config, sub_skill=sub_id, preset_text=preset_text
+            prompt, config, sub_skill=sub_id, preset_text=preset_text
         ),
         "lesson.docx",
     )
