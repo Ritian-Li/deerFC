@@ -13,14 +13,19 @@ logger = logging.getLogger(__name__)
 
 # markdown 图片语法（含 marp 的 ![bg](url) 背景图指令）
 _IMAGE_RE = re.compile(r"!\[[^\]]*\]\([^)]*\)")
+# emoji 及杂项符号：chrome-headless-shell 渲染彩色 emoji 会挂起直到 marp 超时
+_EMOJI_RE = re.compile(
+    "[\U0001f000-\U0001faff\U00002600-\U000027bf\U0001f1e6-\U0001f1ff"
+    "\U00002190-\U000021ff\U00002b00-\U00002bff️‍]"
+)
 
 
-def _strip_remote_images(md_path: str) -> None:
-    """剥掉 markdown 里的图片引用：模型可能塞外链图片 URL，chrome 渲染时会去拉取，
-    在出网受限的环境下会挂起直到 marp 超时。产品输入只有主题文字、无合法图源，直接去掉."""
+def _sanitize_markdown(md_path: str) -> None:
+    """marp 前清洗：去掉外链图片（出网受限时 chrome 拉图挂起）与 emoji
+    （chrome-headless-shell 渲染彩色 emoji 会挂起到超时）。输入只有主题文字，去掉无损内容."""
     with open(md_path, "r", encoding="utf-8") as f:
         content = f.read()
-    cleaned = _IMAGE_RE.sub("", content)
+    cleaned = _EMOJI_RE.sub("", _IMAGE_RE.sub("", content))
     if cleaned != content:
         with open(md_path, "w", encoding="utf-8") as f:
             f.write(cleaned)
@@ -30,7 +35,7 @@ def ppt_generator_node(state: PPTState):
     logger.info("Generating ppt file...")
     # use marp cli to generate ppt file
     # https://github.com/marp-team/marp-cli?tab=readme-ov-file
-    _strip_remote_images(state["ppt_file_path"])
+    _sanitize_markdown(state["ppt_file_path"])
     generated_file_path = os.path.join(
         os.getcwd(), f"generated_ppt_{uuid.uuid4()}.pptx"
     )
