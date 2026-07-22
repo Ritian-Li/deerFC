@@ -95,16 +95,28 @@ curl localhost:14420/api/admin/stats/daily -H "X-Admin-Token: $ADMIN_TOKEN"
 
 ## 8. 技能（skills）
 
-前端聊天页顶部有技能选择器，当前 4 个技能都已上线、走「成功才扣次」计量：
+前端聊天页顶部有技能选择器，当前 6 个技能都已上线、走「成功才扣次」计量：
 
 | 技能 | 接口 | 产出 | 依赖 |
 |---|---|---|---|
 | 深度研究 | POST /api/chat/stream (SSE) | 长报告（网页展示） | 搜索引擎（spark） |
 | 做 PPT | POST /api/ppt/generate `{content}` | .pptx | marp + chrome-headless-shell |
+| 办公文档 | POST /api/doc/generate `{prompt}` | 周报/纪要/策划/公告/简历 .docx | python-docx |
+| 数据表格 | POST /api/sheet/generate `{prompt}` | 课程表/排班/预算/进度 .xlsx | openpyxl |
 | 智能组卷 | POST /api/exam/generate `{prompt}` | 试卷 .docx（题+答案+解析） | python-docx |
 | 教案生成 | POST /api/lesson/generate `{prompt}` | 教案 .docx | python-docx |
 
 新增技能 = 后端加一个 `src/skills/xxx.py`（LLM 出结构化 JSON → 导出）+ 一个端点 + 前端 `web/src/core/skills.ts` 加一项。
+
+### 附件（图片粘贴 / 文件上传解析）
+
+- `POST /api/attachments`（multipart，`file` 字段）上传，**不扣次**；返回 `{id, name, kind, chars, error}`
+- 支持 pdf/docx/xlsx/txt/md/csv（服务端抽取文本）与 png/jpg/webp/gif 图片；单文件 ≤15MB，每次请求 ≤5 个
+- 各生成端点带可选 `attachment_ids: [id]`：文档解析文本以「参考资料」注入提示词（单文件截 2 万字、合计 4 万字）；
+  图片仅深度研究链路以 multimodal 透传，**模型无视觉能力时任务失败不扣次——对外文案勿承诺识图**
+- 附件落 `PLATFORM_FILES_DIR/uploads/{user_id}/`，与产物共用 30 天清理脚本
+- 依赖：`pip install openpyxl==3.1.5 pypdf==5.1.0`（已入 requirements-platform.txt；纯 Python，无系统库）
+- 前端：输入框 📎 上传 + 直接粘贴截图；启动台另有 12 张办公模板卡（`web/src/core/templates.ts`，纯前端改文案即可上新）
 
 ### 服务器基础设施依赖（重建服务器时需重装）
 PPT 技能依赖较重，一次性配置好：
