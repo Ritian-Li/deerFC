@@ -21,6 +21,7 @@ import { FILE_SKILL_CONFIG, type FileSkillId } from "../skills";
 import { StreamError } from "../sse";
 import { parseJSON } from "../utils";
 
+import { clearAttachments, getReadyAttachmentIds } from "./attachments-store";
 import { openRenewDialog, refreshProfile, setRemainingUses } from "./auth-store";
 import { getChatStreamSettings, useSettingsStore } from "./settings-store";
 
@@ -127,12 +128,19 @@ export async function sendMessage(
   }
   useStore.setState({ lastReceipt: null, lastRunError: null });
 
+  // 附件随本次请求消费；请求已发出即清空 chips（后端持有文件，无需重传）
+  const attachmentIds = getReadyAttachmentIds();
+  if (attachmentIds.length) {
+    clearAttachments();
+  }
+
   const settings = getChatStreamSettings();
   const stream = chatStream(
     content ?? "[REPLAY]",
     {
       thread_id: threadId,
       interrupt_feedback: interruptFeedback,
+      attachment_ids: attachmentIds.length ? attachmentIds : undefined,
       // The server enforces auto-accepted plans, so the plan-confirmation
       // UI is skipped entirely on the client side as well.
       auto_accepted_plan: true,
@@ -198,8 +206,17 @@ export async function sendFileSkillMessage(
   });
 
   setResponding(true);
+  const attachmentIds = getReadyAttachmentIds();
+  if (attachmentIds.length) {
+    clearAttachments();
+  }
   try {
-    const { blob, filename } = await generateSkillFile(skill, content, subSkill);
+    const { blob, filename } = await generateSkillFile(
+      skill,
+      content,
+      subSkill,
+      attachmentIds,
+    );
     updateSkillMessage(placeholderId, {
       skill,
       subSkill,

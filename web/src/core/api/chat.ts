@@ -24,6 +24,8 @@ export async function* chatStream(
     enable_background_investigation: boolean;
     /** Research sub-skill preset id (finance/market/academic/policy). */
     sub_skill?: string;
+    /** Ids of uploaded attachments to inject into this run. */
+    attachment_ids?: string[];
     mcp_settings?: {
       servers: Record<
         string,
