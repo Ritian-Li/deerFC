@@ -93,7 +93,41 @@ curl localhost:14420/api/admin/stats/daily -H "X-Admin-Token: $ADMIN_TOKEN"
   object key，下载接口改成返回**预签名 URL 302 跳转**——文件流量完全不走服务器，
   OSS 流量约 ¥0.5/GB；配 30 天生命周期规则自动过期，清理脚本都省了
 
-## 8. 风险提醒
+## 8. 技能（skills）
+
+前端聊天页顶部有技能选择器，当前 4 个技能都已上线、走「成功才扣次」计量：
+
+| 技能 | 接口 | 产出 | 依赖 |
+|---|---|---|---|
+| 深度研究 | POST /api/chat/stream (SSE) | 长报告（网页展示） | 搜索引擎（spark） |
+| 做 PPT | POST /api/ppt/generate `{content}` | .pptx | marp + chrome-headless-shell |
+| 智能组卷 | POST /api/exam/generate `{prompt}` | 试卷 .docx（题+答案+解析） | python-docx |
+| 教案生成 | POST /api/lesson/generate `{prompt}` | 教案 .docx | python-docx |
+
+新增技能 = 后端加一个 `src/skills/xxx.py`（LLM 出结构化 JSON → 导出）+ 一个端点 + 前端 `web/src/core/skills.ts` 加一项。
+
+### 服务器基础设施依赖（重建服务器时需重装）
+PPT 技能依赖较重，一次性配置好：
+```bash
+# 1. python-docx（组卷/教案）
+.venv/bin/pip install python-docx
+# 2. marp（PPT）
+npm install -g @marp-team/marp-cli
+# 3. chrome-headless-shell（marp 导 pptx 需要，服务器连不上谷歌，用国内镜像）
+curl -L -o /tmp/chs.zip "https://cdn.npmmirror.com/binaries/chrome-for-testing/131.0.6778.264/linux64/chrome-headless-shell-linux64.zip"
+unzip /tmp/chs.zip -d /opt/
+# 4. chrome 运行所需系统库
+apt-get install -y libatk1.0-0 libatk-bridge2.0-0 libcups2 libxkbcommon0 libxcomposite1 \
+  libxdamage1 libxrandr2 libgbm1 libpango-1.0-0 libasound2t64 libnss3 libxfixes3 \
+  libxext6 libxi6 libxtst6 libdrm2 libxshmfence1 libgtk-3-0 fonts-noto-cjk
+# 5. chrome 包装脚本（root 下需 --no-sandbox 等 flag）/opt/chrome-wrapper.sh
+#    内容：exec /opt/chrome-headless-shell-linux64/chrome-headless-shell \
+#          --no-sandbox --disable-dev-shm-usage --disable-gpu --headless=new "$@"
+# 6. systemd 服务加环境：CHROME_PATH=/opt/chrome-wrapper.sh、HOME=/root
+```
+注意：marp 渲染彩色 emoji / 外链图片会挂起，代码已在 `ppt_generator_node._sanitize_markdown` 里剥离，无需额外处理。
+
+## 9. 风险提醒
 
 - 上游若用 coding plan 类订阅：注意其服务条款对共享/转售的限制与 RPM/TPM 上限，
   `PLATFORM_MAX_CONCURRENT_RUNS` 要设得比上游限流低
