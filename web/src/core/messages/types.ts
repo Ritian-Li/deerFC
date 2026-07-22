@@ -1,6 +1,8 @@
 // Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
 // SPDX-License-Identifier: MIT
 
+import type { FileSkillId } from "../skills";
+
 export type MessageRole = "user" | "assistant" | "tool";
 
 /**
@@ -10,7 +12,7 @@ export type MessageRole = "user" | "assistant" | "tool";
  */
 export interface SkillResult {
   /** File skill that produced this message. */
-  skill: "ppt" | "exam" | "lesson";
+  skill: FileSkillId;
   /** Sub-skill (scenario preset) used for this run, e.g. "quiz". */
   subSkill?: string;
   status: "loading" | "success" | "error";

@@ -43,6 +43,18 @@ const THEME_CLASSES: Record<
     inactive:
       "border-transparent bg-gradient-to-br from-orange-500/8 to-transparent",
   },
+  cyan: {
+    active:
+      "border-cyan-500 bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 text-cyan-600 dark:text-cyan-400",
+    inactive:
+      "border-transparent bg-gradient-to-br from-cyan-500/8 to-transparent",
+  },
+  teal: {
+    active:
+      "border-teal-500 bg-gradient-to-br from-teal-500/20 to-teal-500/5 text-teal-600 dark:text-teal-400",
+    inactive:
+      "border-transparent bg-gradient-to-br from-teal-500/8 to-transparent",
+  },
   green: {
     active:
       "border-green-500 bg-gradient-to-br from-green-500/20 to-green-500/5 text-green-600 dark:text-green-400",
