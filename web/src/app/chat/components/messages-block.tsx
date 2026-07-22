@@ -27,7 +27,6 @@ import {
 } from "~/core/store";
 import { cn } from "~/lib/utils";
 
-import { ConversationStarter } from "./conversation-starter";
 import { InputBox } from "./input-box";
 import { MessageListView } from "./message-list-view";
 import { Welcome } from "./welcome";
@@ -42,13 +41,6 @@ export function MessagesBlock({ className }: { className?: string }) {
   const currentSkill = useCurrentSkill();
   const currentSubSkill = useCurrentSubSkill();
   const abortControllerRef = useRef<AbortController | null>(null);
-  // Prefill payload for the input box; the counter forces a re-fill even when
-  // the same example text is clicked twice.
-  const [inputPrefill, setInputPrefill] = useState<{
-    text: string;
-    seq: number;
-  } | null>(null);
-  const prefillSeq = useRef(0);
   const handleSend = useCallback(
     async (message: string, options?: { interruptFeedback?: string }) => {
       if (isFileSkill(currentSkill)) {
@@ -72,10 +64,6 @@ export function MessagesBlock({ className }: { className?: string }) {
     },
     [currentSkill, currentSubSkill],
   );
-  const handleFillExample = useCallback((text: string) => {
-    prefillSeq.current += 1;
-    setInputPrefill({ text, seq: prefillSeq.current });
-  }, []);
   const handleCancel = useCallback(() => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
@@ -89,25 +77,38 @@ export function MessagesBlock({ className }: { className?: string }) {
     setFastForwarding(!fastForwarding);
     fastForwardReplay(!fastForwarding);
   }, [fastForwarding]);
+  const isLauncher = messageCount === 0 && !responding && !isReplay;
   return (
-    <div className={cn("flex h-full flex-col", className)}>
-      <MessageListView className="flex flex-grow" onSendMessage={handleSend} />
+    <div
+      className={cn(
+        "flex h-full flex-col",
+        // 启动台状态：无消息列表，选择区垂直居中
+        isLauncher && "justify-center",
+        className,
+      )}
+    >
+      {!isLauncher && (
+        <MessageListView
+          className="flex flex-grow"
+          onSendMessage={handleSend}
+        />
+      )}
       {!isReplay ? (
-        <div className="relative flex h-fit min-h-42 shrink-0 pb-4">
-          {!responding && messageCount === 0 && (
-            <ConversationStarter
-              className="absolute top-[-238px] left-0"
-              onFillExample={handleFillExample}
-            />
+        <div className="relative flex h-fit min-h-42 shrink-0 flex-col gap-6 pb-4">
+          {/* 空会话 = 启动台：极简标语 + 大号子能力缩略图；开始对话后消失 */}
+          {isLauncher && (
+            <div className="flex flex-col items-center gap-1 pt-2">
+              <h2 className="text-2xl font-medium">一句话，出成品</h2>
+              <p className="text-muted-foreground text-sm">
+                选一个能力，说出需求，直接拿到可下载的成果
+              </p>
+            </div>
           )}
           <InputBox
             className="h-full w-full"
             responding={isFileSkill(currentSkill) ? false : responding}
             disabled={isFileSkill(currentSkill) ? responding : false}
-            value={inputPrefill?.text}
-            key={inputPrefill?.seq}
-            // 欢迎页上方的 ConversationStarter 已有同款技能胶囊，避免重复
-            showSkillPills={messageCount > 0}
+            hero={isLauncher}
             onSend={handleSend}
             onCancel={handleCancel}
           />

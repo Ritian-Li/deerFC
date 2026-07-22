@@ -11,7 +11,6 @@ import {
   useState,
 } from "react";
 
-import { Detective } from "~/components/deer-flow/icons/detective";
 import { Tooltip } from "~/components/deer-flow/tooltip";
 import { Button } from "~/components/ui/button";
 import type { Option } from "~/core/messages";
@@ -19,10 +18,8 @@ import { getSkill, getSubSkill, SKILLS, type SkillTheme } from "~/core/skills";
 import {
   setCurrentSkill,
   setCurrentSubSkill,
-  setEnableBackgroundInvestigation,
   useCurrentSkill,
   useCurrentSubSkill,
-  useSettingsStore,
 } from "~/core/store";
 import { cn } from "~/lib/utils";
 
@@ -67,7 +64,7 @@ export function InputBox({
   disabled,
   feedback,
   value,
-  showSkillPills = true,
+  hero = false,
   onSend,
   onCancel,
   onRemoveFeedback,
@@ -80,11 +77,8 @@ export function InputBox({
   feedback?: { option: Option } | null;
   /** Controlled value used to prefill the box from example clicks. */
   value?: string;
-  /**
-   * Render the first-level skill pill row. Off on the welcome screen where
-   * ConversationStarter already shows the same pills (avoids duplication).
-   */
-  showSkillPills?: boolean;
+  /** Hero mode (empty conversation): bigger sub-skill thumbnails. */
+  hero?: boolean;
   onSend?: (message: string, options?: { interruptFeedback?: string }) => void;
   onCancel?: () => void;
   onRemoveFeedback?: () => void;
@@ -92,9 +86,6 @@ export function InputBox({
   const [message, setMessage] = useState("");
   const [imeStatus, setImeStatus] = useState<"active" | "inactive">("inactive");
   const [indent, setIndent] = useState(0);
-  const backgroundInvestigation = useSettingsStore(
-    (state) => state.general.enableBackgroundInvestigation,
-  );
   const currentSkill = useCurrentSkill();
   const currentSubSkill = useCurrentSubSkill();
   const skill = getSkill(currentSkill);
@@ -167,9 +158,62 @@ export function InputBox({
 
   return (
     <div className="flex w-full flex-col gap-2">
-      {/* Skill selector: horizontally scrollable pills, mobile-friendly. */}
-      {showSkillPills && (
-      <div className="scrollbar-hide -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-0.5">
+      {/* 子能力缩略图（主视觉，位于技能胶囊上方）。hero 模式下更大。 */}
+      <div
+        className={cn(
+          "scrollbar-hide -mx-1 flex items-stretch gap-2 overflow-x-auto px-1 pb-0.5",
+          hero && "justify-start sm:justify-center",
+        )}
+      >
+        {skill.subSkills.map((sub) => {
+          const active = sub.id === subSkill.id;
+          return (
+            <button
+              key={sub.id}
+              type="button"
+              disabled={locked}
+              onClick={() => {
+                if (!locked) {
+                  setCurrentSubSkill(sub.id);
+                }
+              }}
+              className={cn(
+                "flex shrink-0 flex-col items-center rounded-xl border-2 transition-all duration-150",
+                hero ? "w-[92px] gap-1.5 px-1 py-3" : "w-[72px] gap-1 px-1 py-2",
+                active ? theme.active : theme.inactive,
+                !active && "text-muted-foreground opacity-70 hover:opacity-100",
+                locked && "cursor-not-allowed opacity-50",
+              )}
+              aria-pressed={active}
+            >
+              <span
+                className={cn(
+                  "leading-none transition-transform duration-150",
+                  hero ? "text-[32px]" : "text-[26px]",
+                  active && "scale-108",
+                )}
+              >
+                {sub.emoji}
+              </span>
+              <span
+                className={cn(
+                  "leading-tight font-medium whitespace-nowrap",
+                  hero ? "text-xs" : "text-[11px]",
+                )}
+              >
+                {sub.name}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {/* 一级技能胶囊（缩略图之下） */}
+      <div
+        className={cn(
+          "scrollbar-hide -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-0.5",
+          hero && "justify-start sm:justify-center",
+        )}
+      >
         {SKILLS.map((s) => {
           const active = s.id === currentSkill;
           return (
@@ -193,44 +237,6 @@ export function InputBox({
             >
               <span>{s.emoji}</span>
               <span>{s.name}</span>
-            </button>
-          );
-        })}
-      </div>
-      )}
-      {/* Sub-skill thumbnail cards: scenario presets of the current skill. */}
-      <div className="scrollbar-hide -mx-1 flex items-stretch gap-2 overflow-x-auto px-1 pb-0.5">
-        {skill.subSkills.map((sub) => {
-          const active = sub.id === subSkill.id;
-          return (
-            <button
-              key={sub.id}
-              type="button"
-              disabled={locked}
-              onClick={() => {
-                if (!locked) {
-                  setCurrentSubSkill(sub.id);
-                }
-              }}
-              className={cn(
-                "flex w-[72px] shrink-0 flex-col items-center gap-1 rounded-xl border-2 px-1 py-2 transition-all duration-150",
-                active ? theme.active : theme.inactive,
-                !active && "text-muted-foreground opacity-70 hover:opacity-100",
-                locked && "cursor-not-allowed opacity-50",
-              )}
-              aria-pressed={active}
-            >
-              <span
-                className={cn(
-                  "text-[26px] leading-none transition-transform duration-150",
-                  active && "scale-108",
-                )}
-              >
-                {sub.emoji}
-              </span>
-              <span className="text-[11px] leading-tight font-medium whitespace-nowrap">
-                {sub.name}
-              </span>
             </button>
           );
         })}
@@ -302,41 +308,11 @@ export function InputBox({
       </div>
       <div className="flex items-center px-4 py-2">
         <div className="flex grow">
-          {isResearch && (
-            <Tooltip
-              className="max-w-60"
-              title={
-                <div>
-                  <h3 className="mb-2 font-bold">
-                    联网预调研：{backgroundInvestigation ? "开启" : "关闭"}
-                  </h3>
-                  <p>
-                    开启后，助手会在制定研究计划前先做一轮联网搜索，适合涉及时事和新闻的问题。
-                  </p>
-                </div>
-              }
-            >
-              <Button
-                className={cn(
-                  "rounded-2xl",
-                  backgroundInvestigation && "!border-brand !text-brand",
-                )}
-                variant="outline"
-                size="lg"
-                disabled={locked}
-                onClick={() =>
-                  setEnableBackgroundInvestigation(!backgroundInvestigation)
-                }
-              >
-                <Detective /> 联网预调研
-              </Button>
-            </Tooltip>
-          )}
-          {!isResearch && (
-            <span className="text-muted-foreground self-center text-xs">
-              一句话生成{skill.name}，成品可直接下载
-            </span>
-          )}
+          <span className="text-muted-foreground self-center text-xs">
+            {isResearch
+              ? "自动联网检索 · 生成深度研究报告"
+              : `一句话生成${skill.name}，成品可直接下载`}
+          </span>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           <Tooltip title={responding ? "停止" : "发送"}>

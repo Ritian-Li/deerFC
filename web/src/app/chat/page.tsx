@@ -6,7 +6,6 @@
 import { History } from "lucide-react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { Suspense } from "react";
 
 import { AuthGuard } from "~/components/deer-flow/auth-guard";
 import { Button } from "~/components/ui/button";
@@ -14,7 +13,6 @@ import { Button } from "~/components/ui/button";
 import { Logo } from "../../components/deer-flow/logo";
 import { ThemeToggle } from "../../components/deer-flow/theme-toggle";
 import { Tooltip } from "../../components/deer-flow/tooltip";
-import { SettingsDialog } from "../settings/dialogs/settings-dialog";
 
 import { UsageBar } from "./components/usage-bar";
 
@@ -45,10 +43,9 @@ export default function HomePage() {
                   </Link>
                 </Button>
               </Tooltip>
+              {/* 研究参数（步数/检索条数/联网预调研）已内置服务端默认，
+                  C 端不再暴露设置入口 */}
               <ThemeToggle />
-              <Suspense>
-                <SettingsDialog />
-              </Suspense>
             </div>
           </div>
         </header>

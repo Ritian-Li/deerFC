@@ -136,8 +136,8 @@ export async function sendMessage(
       // The server enforces auto-accepted plans, so the plan-confirmation
       // UI is skipped entirely on the client side as well.
       auto_accepted_plan: true,
-      enable_background_investigation:
-        settings.enableBackgroundInvestigation ?? true,
+      // 联网预调研恒开（设置入口已移除，忽略历史 localStorage 值）
+      enable_background_investigation: true,
       // Research sub-skill preset; "general" means no preset (v1 behavior).
       sub_skill: useSettingsStore.getState().currentSubSkill,
       max_plan_iterations: settings.maxPlanIterations,
