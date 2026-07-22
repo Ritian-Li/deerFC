@@ -85,8 +85,9 @@ export function MessagesBlock({ className }: { className?: string }) {
     <div
       className={cn(
         "flex h-full flex-col",
-        // 启动台状态：无消息列表，选择区垂直居中
-        isLauncher && "justify-center",
+        // 启动台状态：内容多时可滚动，短时靠 my-auto 垂直居中
+        // （不能用 justify-center：内容超高会让 flex 压缩子行、文字被裁）
+        isLauncher && "min-h-0 overflow-x-hidden overflow-y-auto",
         className,
       )}
     >
@@ -97,7 +98,12 @@ export function MessagesBlock({ className }: { className?: string }) {
         />
       )}
       {!isReplay ? (
-        <div className="relative flex h-fit min-h-42 shrink-0 flex-col gap-6 pb-4">
+        <div
+          className={cn(
+            "relative flex h-fit min-h-42 shrink-0 flex-col gap-5 pb-4",
+            isLauncher && "my-auto pt-4",
+          )}
+        >
           {/* 空会话 = 启动台：极简标语 + 大号子能力缩略图；开始对话后消失 */}
           {isLauncher && (
             <div className="flex flex-col items-center gap-1 pt-2">

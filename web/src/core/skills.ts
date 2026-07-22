@@ -21,12 +21,36 @@ export type FileSkillId = "ppt" | "doc" | "sheet" | "exam" | "lesson";
 /** Card theme; maps to static tailwind classes in the selector component. */
 export type SkillTheme = "blue" | "orange" | "cyan" | "teal" | "green" | "purple";
 
+/** CSS 绘制的成品缩略预览类型（见 mini-preview.tsx）。 */
+export type PreviewKind =
+  | "report"
+  | "chart"
+  | "swot"
+  | "cite"
+  | "clauses"
+  | "slide"
+  | "slide-chart"
+  | "slide-steps"
+  | "slide-hero"
+  | "checklist"
+  | "minutes"
+  | "timeline"
+  | "notice"
+  | "resume"
+  | "grid"
+  | "grid-status"
+  | "grid-total"
+  | "exam"
+  | "lesson";
+
 export interface SubSkillDef {
   id: string;
   name: string;
   emoji: string;
   /** One-line description shown under the card row when selected (≤20 chars). */
   desc: string;
+  /** 成品缩略预览的画法。 */
+  preview: PreviewKind;
   /** Placeholder for the input box while this sub-skill is active. */
   placeholder: string;
   /** Example prompts (include 教材版本+年级 for edu skills). */
@@ -53,6 +77,7 @@ export const SKILLS: SkillDef[] = [
         name: "通用调研",
         emoji: "🔍",
         desc: "任何主题的深度研究报告",
+        preview: "report",
         placeholder: "输入你想研究的问题…",
         examples: [
           "帮我调研 2025 年中国新能源汽车出口市场",
@@ -64,6 +89,7 @@ export const SKILLS: SkillDef[] = [
         name: "行业分析",
         emoji: "📈",
         desc: "行业规模·格局·风险机会",
+        preview: "chart",
         placeholder: "输入行业或公司…",
         examples: [
           "分析国内储能行业的竞争格局和投资机会",
@@ -75,6 +101,7 @@ export const SKILLS: SkillDef[] = [
         name: "市场调研",
         emoji: "🛒",
         desc: "市场规模·用户·竞品对比",
+        preview: "swot",
         placeholder: "输入产品或市场…",
         examples: [
           "调研三线城市开一家宠物店的市场情况",
@@ -86,6 +113,7 @@ export const SKILLS: SkillDef[] = [
         name: "文献综述",
         emoji: "🎓",
         desc: "研究脉络·观点对比·空白",
+        preview: "cite",
         placeholder: "输入研究方向或论文主题…",
         examples: [
           "大语言模型在教育领域应用的研究综述",
@@ -97,6 +125,7 @@ export const SKILLS: SkillDef[] = [
         name: "政策解读",
         emoji: "📜",
         desc: "政策要点·影响·应对建议",
+        preview: "clauses",
         placeholder: "输入政策名称或领域…",
         examples: [
           "解读最新的新能源汽车购置税优惠政策",
@@ -116,6 +145,7 @@ export const SKILLS: SkillDef[] = [
         name: "通用演示",
         emoji: "📊",
         desc: "任意主题的演示文稿",
+        preview: "slide",
         placeholder: "描述你想要的 PPT 主题…",
         examples: [
           "帮我做一份「时间管理」主题的 PPT",
@@ -127,6 +157,7 @@ export const SKILLS: SkillDef[] = [
         name: "工作汇报",
         emoji: "💼",
         desc: "目标·成果·问题·计划",
+        preview: "slide-chart",
         placeholder: "描述汇报内容（部门/周期/重点）…",
         examples: [
           "Q2 销售部季度复盘汇报 PPT",
@@ -138,6 +169,7 @@ export const SKILLS: SkillDef[] = [
         name: "教学课件",
         emoji: "🧑‍🏫",
         desc: "目标·讲解·例题·练习",
+        preview: "slide-steps",
         placeholder: "课题/学科/年级…",
         examples: [
           "人教版九上数学《一元二次方程》第一课时课件",
@@ -149,6 +181,7 @@ export const SKILLS: SkillDef[] = [
         name: "产品介绍",
         emoji: "🚀",
         desc: "痛点·方案·亮点·案例",
+        preview: "slide-hero",
         placeholder: "描述产品/项目和亮点…",
         examples: [
           "智能手环新品发布介绍 PPT",
@@ -160,6 +193,7 @@ export const SKILLS: SkillDef[] = [
         name: "培训分享",
         emoji: "📣",
         desc: "概念·方法·案例·练习",
+        preview: "slide-steps",
         placeholder: "培训主题/对象…",
         examples: [
           "新员工时间管理培训 PPT",
@@ -179,6 +213,7 @@ export const SKILLS: SkillDef[] = [
         name: "周报总结",
         emoji: "🗓️",
         desc: "完成事项·数据亮点·下周计划",
+        preview: "checklist",
         placeholder: "本周做了什么（部门/事项/数据）…",
         examples: [
           "运营部本周周报：上新3个SKU，GMV环比+12%，下周筹备大促",
@@ -190,6 +225,7 @@ export const SKILLS: SkillDef[] = [
         name: "会议纪要",
         emoji: "🧾",
         desc: "议题结论·决议·行动项",
+        preview: "minutes",
         placeholder: "会议主题/讨论要点/结论…",
         examples: [
           "周一产品例会纪要：讨论了改版方案，定了7月底上线，张三负责开发排期",
@@ -201,6 +237,7 @@ export const SKILLS: SkillDef[] = [
         name: "活动策划",
         emoji: "🎪",
         desc: "目标·流程·分工·预算",
+        preview: "timeline",
         placeholder: "活动类型/时间/对象/预算…",
         examples: [
           "公司10周年庆活动策划方案，200人，预算5万",
@@ -212,6 +249,7 @@ export const SKILLS: SkillDef[] = [
         name: "通知公告",
         emoji: "📢",
         desc: "规范公文体·语气得体",
+        preview: "notice",
         placeholder: "通知什么事/给谁/有什么要求…",
         examples: [
           "写一份放假通知：国庆放假8天，值班安排另行通知",
@@ -223,6 +261,7 @@ export const SKILLS: SkillDef[] = [
         name: "个人简历",
         emoji: "🧑‍💼",
         desc: "STAR经历·量化成果",
+        preview: "resume",
         placeholder: "职位方向/教育背景/工作经历…",
         examples: [
           "3年电商运营经验求职简历，做过直播带货，最高单场50万",
@@ -242,6 +281,7 @@ export const SKILLS: SkillDef[] = [
         name: "通用表格",
         emoji: "📋",
         desc: "任意需求整理成规范表格",
+        preview: "grid",
         placeholder: "描述你要的表格（行/列/内容）…",
         examples: [
           "把班级50名学生按成绩分组，做一张分组名单表",
@@ -253,6 +293,7 @@ export const SKILLS: SkillDef[] = [
         name: "课程表",
         emoji: "🕐",
         desc: "节次×星期·含时间段",
+        preview: "grid",
         placeholder: "年级/每天几节/科目安排…",
         examples: [
           "初一课程表：每天8节，主科每天都有，周五下午社团",
@@ -264,6 +305,7 @@ export const SKILLS: SkillDef[] = [
         name: "值日排班",
         emoji: "🧹",
         desc: "轮转均衡·职责清晰",
+        preview: "grid-status",
         placeholder: "人数/周期/岗位…",
         examples: [
           "班级45人每天6人值日，按周轮转排一个月",
@@ -275,6 +317,7 @@ export const SKILLS: SkillDef[] = [
         name: "预算明细",
         emoji: "💰",
         desc: "单价·数量·小计·合计",
+        preview: "grid-total",
         placeholder: "预算用途/项目/大致金额…",
         examples: [
           "班级元旦晚会预算表，总预算2000元",
@@ -286,6 +329,7 @@ export const SKILLS: SkillDef[] = [
         name: "计划进度",
         emoji: "📅",
         desc: "任务·负责人·起止·状态",
+        preview: "grid-status",
         placeholder: "项目内容/阶段/周期…",
         examples: [
           "装修工程3个月进度计划表，含水电木瓦油各阶段",
@@ -305,6 +349,7 @@ export const SKILLS: SkillDef[] = [
         name: "单元测试",
         emoji: "📝",
         desc: "45~60分钟·题型完整",
+        preview: "exam",
         placeholder: "学科/年级/单元/题型/数量…",
         examples: [
           "人教版九上数学 一元二次方程单元测试 10道选择5道解答",
@@ -316,6 +361,7 @@ export const SKILLS: SkillDef[] = [
         name: "随堂测验",
         emoji: "⏱️",
         desc: "10~15分钟小卷·当堂知识点",
+        preview: "exam",
         placeholder: "学科/年级/今天讲的知识点…",
         examples: [
           "人教版七上数学 有理数加减法 随堂测验",
@@ -327,6 +373,7 @@ export const SKILLS: SkillDef[] = [
         name: "家庭作业",
         emoji: "🏠",
         desc: "30~40分钟·解析详细可批改",
+        preview: "exam",
         placeholder: "学科/年级/知识点/题量…",
         examples: [
           "人教版五年级数学 分数加减法 家庭作业15题",
@@ -338,6 +385,7 @@ export const SKILLS: SkillDef[] = [
         name: "期中期末",
         emoji: "🎯",
         desc: "90分钟综合卷·含压轴题",
+        preview: "exam",
         placeholder: "学科/年级/考试范围…",
         examples: [
           "人教版九上数学期中模拟卷（前三章）",
@@ -349,6 +397,7 @@ export const SKILLS: SkillDef[] = [
         name: "专题训练",
         emoji: "🎪",
         desc: "单知识点·阶梯递进·易错提示",
+        preview: "exam",
         placeholder: "学科/年级/要强化的知识点…",
         examples: [
           "初三数学 二次函数最值问题 专题训练20题",
@@ -368,6 +417,7 @@ export const SKILLS: SkillDef[] = [
         name: "新授课",
         emoji: "📚",
         desc: "导入·新授·巩固·小结",
+        preview: "lesson",
         placeholder: "课题/学科/年级/课时…",
         examples: [
           "人教版初一语文《春》 一课时 教案",
@@ -379,6 +429,7 @@ export const SKILLS: SkillDef[] = [
         name: "复习课",
         emoji: "🔁",
         desc: "知识梳理·例题·易错辨析",
+        preview: "lesson",
         placeholder: "复习范围/学科/年级…",
         examples: [
           "人教版九上数学 一元二次方程复习课教案",
@@ -390,6 +441,7 @@ export const SKILLS: SkillDef[] = [
         name: "公开课",
         emoji: "🌟",
         desc: "含设计意图·精确到分钟",
+        preview: "lesson",
         placeholder: "课题/学科/年级…",
         examples: [
           "人教版初一语文《春》公开课教案",
@@ -401,6 +453,7 @@ export const SKILLS: SkillDef[] = [
         name: "说课稿",
         emoji: "🎤",
         desc: "说教材·学情·教法·过程",
+        preview: "cite",
         placeholder: "课题/学科/年级…",
         examples: [
           "人教版初一语文《春》说课稿",
@@ -412,6 +465,7 @@ export const SKILLS: SkillDef[] = [
         name: "作业设计",
         emoji: "✏️",
         desc: "双减分层作业·三层设计",
+        preview: "checklist",
         placeholder: "学科/年级/知识点…",
         examples: [
           "人教版七上数学 整式的加减 分层作业设计",

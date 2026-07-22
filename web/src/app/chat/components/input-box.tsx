@@ -28,6 +28,8 @@ import {
 } from "~/core/store";
 import { cn } from "~/lib/utils";
 
+import { MiniPreview } from "./mini-preview";
+
 /**
  * Static tailwind classes per skill theme (must be literal for the JIT
  * compiler). Same skill → same color family; sub-skills differ by icon.
@@ -213,10 +215,11 @@ export function InputBox({
 
   return (
     <div className="flex w-full flex-col gap-2">
-      {/* 子能力缩略图（主视觉，位于技能胶囊上方）。hero 模式下更大。 */}
+      {/* 子能力缩略图（主视觉，位于技能胶囊上方）。hero 模式下更大。
+          shrink-0：启动台内容超高时不允许 flex 压缩本行（否则卡片文字被裁）。 */}
       <div
         className={cn(
-          "scrollbar-hide -mx-1 flex items-stretch gap-2 overflow-x-auto px-1 pb-0.5",
+          "scrollbar-hide -mx-1 flex shrink-0 items-stretch gap-2 overflow-x-auto px-1 pb-0.5",
           hero && "justify-start sm:justify-center",
         )}
       >
@@ -234,29 +237,31 @@ export function InputBox({
               }}
               className={cn(
                 "flex shrink-0 flex-col items-center rounded-xl border-2 transition-all duration-150",
-                hero ? "w-[92px] gap-1.5 px-1 py-3" : "w-[72px] gap-1 px-1 py-2",
+                hero
+                  ? "w-[124px] gap-1.5 px-2 pt-3 pb-2.5"
+                  : "w-[108px] gap-1 px-2 pt-2.5 pb-2",
                 active ? theme.active : theme.inactive,
-                !active && "text-muted-foreground opacity-70 hover:opacity-100",
+                !active && "opacity-80 hover:opacity-100",
                 locked && "cursor-not-allowed opacity-50",
               )}
               aria-pressed={active}
             >
+              {/* 成品缩略预览：卡片直接长得像交付物 */}
+              <MiniPreview
+                kind={sub.preview}
+                theme={skill.theme}
+                className={cn(hero ? "h-16" : "h-14")}
+              />
               <span
                 className={cn(
-                  "leading-none transition-transform duration-150",
-                  hero ? "text-[32px]" : "text-[26px]",
-                  active && "scale-108",
-                )}
-              >
-                {sub.emoji}
-              </span>
-              <span
-                className={cn(
-                  "leading-tight font-medium whitespace-nowrap",
+                  "text-foreground leading-tight font-medium whitespace-nowrap",
                   hero ? "text-xs" : "text-[11px]",
                 )}
               >
                 {sub.name}
+              </span>
+              <span className="text-muted-foreground w-full truncate text-center text-[10px] leading-tight">
+                {sub.desc}
               </span>
             </button>
           );
@@ -265,7 +270,7 @@ export function InputBox({
       {/* 一级技能胶囊（缩略图之下） */}
       <div
         className={cn(
-          "scrollbar-hide -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-0.5",
+          "scrollbar-hide -mx-1 flex shrink-0 items-center gap-2 overflow-x-auto px-1 pb-0.5",
           hero && "justify-start sm:justify-center",
         )}
       >
@@ -296,9 +301,8 @@ export function InputBox({
           );
         })}
       </div>
-      {/* Selected sub-skill hint: description + one clickable example. */}
+      {/* Selected sub-skill hint: one clickable example (desc lives on the card). */}
       <div className="text-muted-foreground flex min-w-0 items-center gap-2 px-1 text-xs">
-        <span className="shrink-0">{subSkill.desc}</span>
         {subSkill.examples[0] && (
           <button
             type="button"
