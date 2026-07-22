@@ -132,7 +132,7 @@ export function InputBox({
           placeholder={
             feedback
               ? `Describe how you ${feedback.option.text.toLocaleLowerCase()}?`
-              : "What can I do for you?"
+              : "有什么可以帮你的？"
           }
           value={message}
           onCompositionStart={() => setImeStatus("active")}
@@ -150,12 +150,10 @@ export function InputBox({
             title={
               <div>
                 <h3 className="mb-2 font-bold">
-                  Investigation Mode: {backgroundInvestigation ? "On" : "Off"}
+                  联网预调研：{backgroundInvestigation ? "开启" : "关闭"}
                 </h3>
                 <p>
-                  When enabled, DeerFlow will perform a quick search before
-                  planning. This is useful for researches related to ongoing
-                  events and news.
+                  开启后，助手会在制定研究计划前先做一轮联网搜索，适合涉及时事和新闻的问题。
                 </p>
               </div>
             }
@@ -171,12 +169,12 @@ export function InputBox({
                 setEnableBackgroundInvestigation(!backgroundInvestigation)
               }
             >
-              <Detective /> Investigation
+              <Detective /> 联网预调研
             </Button>
           </Tooltip>
         </div>
         <div className="flex shrink-0 items-center gap-2">
-          <Tooltip title={responding ? "Stop" : "Send"}>
+          <Tooltip title={responding ? "停止" : "发送"}>
             <Button
               variant="outline"
               size="icon"

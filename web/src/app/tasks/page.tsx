@@ -57,7 +57,7 @@ function TasksList() {
         </div>
       ) : runs.length === 0 ? (
         <div className="text-muted-foreground flex flex-col items-center gap-3 py-24 text-sm">
-          <div className="text-4xl">🦌</div>
+          <div className="text-4xl">📭</div>
           还没有任务记录，去发起你的第一次研究吧！
           <Button asChild>
             <Link href="/chat">去提问</Link>

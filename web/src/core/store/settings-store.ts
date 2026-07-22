@@ -10,7 +10,7 @@ const SETTINGS_KEY = "deerflow.settings";
 const DEFAULT_SETTINGS: SettingsState = {
   general: {
     autoAcceptedPlan: false,
-    enableBackgroundInvestigation: false,
+    enableBackgroundInvestigation: true,
     maxPlanIterations: 1,
     maxStepNum: 3,
     maxSearchResults: 3,

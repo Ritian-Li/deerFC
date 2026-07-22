@@ -396,20 +396,20 @@ function PodcastCard({
             {!hasError ? (
               <RainbowText animated={isGenerating}>
                 {isGenerating
-                  ? "Generating podcast..."
+                  ? "正在生成播客…"
                   : isPlaying
-                    ? "Now playing podcast..."
-                    : "Podcast"}
+                    ? "正在播放播客…"
+                    : "播客"}
               </RainbowText>
             ) : (
               <div className="text-red-500">
-                Error when generating podcast. Please try again.
+                播客生成失败，请重试。
               </div>
             )}
           </div>
           {!hasError && !isGenerating && (
             <div className="flex">
-              <Tooltip title="Download podcast">
+              <Tooltip title="下载播客">
                 <Button variant="ghost" size="icon" asChild>
                   <a
                     href={audioUrl}

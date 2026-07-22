@@ -1,45 +1,18 @@
-# 🦌 [About DeerFlow](https://github.com/bytedance/deer-flow)
+# 关于
 
-> **From Open Source, Back to Open Source**
+AI 深度研究助手是一款结合大语言模型与专业工具的智能研究工具，帮你完成联网检索、信息整理、内容爬取、代码执行等任务。
 
-**DeerFlow** (**D**eep **E**xploration and **E**fficient **R**esearch **Flow**) is a community-driven AI automation framework inspired by the remarkable contributions of the open source community. Our mission is to seamlessly integrate language models with specialized tools for tasks such as web search, crawling, and Python code execution—all while giving back to the community that made this innovation possible.
+## 致谢
 
----
+本产品基于众多优秀的开源项目构建，在此一并致谢：
 
-## 🌟 GitHub Repository
+### 核心框架
+- **[LangChain](https://github.com/langchain-ai/langchain)**：驱动大语言模型交互与链式调用的强大框架。
+- **[LangGraph](https://github.com/langchain-ai/langgraph)**：支持复杂的多智能体编排。
+- **[Next.js](https://nextjs.org/)**：用于构建 Web 应用的前沿框架。
 
-Explore DeerFlow on GitHub: [github.com/bytedance/deer-flow](https://github.com/bytedance/deer-flow)
-
----
-
-## 📜 License
-
-DeerFlow is proudly open source and distributed under the **MIT License**.
-
----
-
-## 🙌 Acknowledgments
-
-We extend our heartfelt gratitude to the open source projects and contributors who have made DeerFlow a reality. We truly stand on the shoulders of giants.
-
-### Core Frameworks
-- **[LangChain](https://github.com/langchain-ai/langchain)**: A phenomenal framework that powers our LLM interactions and chains.
-- **[LangGraph](https://github.com/langchain-ai/langgraph)**: Enabling sophisticated multi-agent orchestration.
-- **[Next.js](https://nextjs.org/)**: A cutting-edge framework for building web applications.
-
-### UI Libraries
-- **[Shadcn](https://ui.shadcn.com/)**: Minimalistic components that power our UI.
-- **[Zustand](https://zustand.docs.pmnd.rs/)**: A stunning state management library.
-- **[Framer Motion](https://www.framer.com/motion/)**: An amazing animation library.
-- **[React Markdown](https://www.npmjs.com/package/react-markdown)**: Exceptional markdown rendering with customizability.
-- **[SToneX](https://github.com/stonexer)**: For his invaluable contribution to token-by-token visual effects.
-
-These outstanding projects form the backbone of DeerFlow and exemplify the transformative power of open source collaboration.
-
-### Special Thanks
-Finally, we want to express our heartfelt gratitude to the core authors of `DeerFlow`:
-
-- **[Daniel Walnut](https://github.com/hetaoBackend/)**
-- **[Henry Li](https://github.com/magiccube/)**
-
-Without their vision, passion and dedication, `DeerFlow` would not be what it is today.
+### UI 库
+- **[Shadcn](https://ui.shadcn.com/)**：简洁的组件库，支撑我们的界面。
+- **[Zustand](https://zustand.docs.pmnd.rs/)**：出色的状态管理库。
+- **[Framer Motion](https://www.framer.com/motion/)**：优秀的动画库。
+- **[React Markdown](https://www.npmjs.com/package/react-markdown)**：高度可定制的 Markdown 渲染。

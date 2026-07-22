@@ -53,8 +53,8 @@ export default function LoginPage() {
     <div className="bg-app flex min-h-screen w-full flex-col items-center justify-center px-6">
       <div className="w-full max-w-sm">
         <div className="mb-10 flex flex-col items-center text-center">
-          <div className="mb-3 text-6xl">🦌</div>
-          <h1 className="text-2xl font-semibold">DeerFlow 深度研究助手</h1>
+          <div className="mb-3 text-6xl">🔍</div>
+          <h1 className="text-2xl font-semibold">AI 深度研究助手</h1>
           <p className="text-muted-foreground mt-3 text-sm leading-relaxed">
             输入卡密开始使用，首次输入自动激活
           </p>

@@ -11,6 +11,7 @@ export type Tab = FunctionComponent<{
   onChange: (changes: Partial<SettingsState>) => void;
 }> & {
   displayName?: string;
+  label?: string;
   icon?: LucideIcon;
   badge?: string;
 };

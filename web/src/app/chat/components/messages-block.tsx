@@ -17,7 +17,6 @@ import { fastForwardReplay } from "~/core/api";
 import { useReplayMetadata } from "~/core/api/hooks";
 import { useReplay } from "~/core/replay";
 import { sendMessage, useMessageIds, useStore } from "~/core/store";
-import { env } from "~/env";
 import { cn } from "~/lib/utils";
 
 import { ConversationStarter } from "./conversation-starter";
@@ -109,16 +108,16 @@ export function MessagesBlock({ className }: { className?: string }) {
                   <CardHeader>
                     <CardTitle>
                       <RainbowText animated={responding}>
-                        {responding ? "Replaying" : `${replayTitle}`}
+                        {responding ? "回放中" : `${replayTitle}`}
                       </RainbowText>
                     </CardTitle>
                     <CardDescription>
                       <RainbowText animated={responding}>
                         {responding
-                          ? "DeerFlow is now replaying the conversation..."
+                          ? "正在回放对话…"
                           : replayStarted
-                            ? "The replay has been stopped."
-                            : `You're now in DeerFlow's replay mode. Click the "Play" button on the right to start.`}
+                            ? "回放已停止。"
+                            : `你正处于回放模式，点击右侧"播放"开始。`}
                       </RainbowText>
                     </CardDescription>
                   </CardHeader>
@@ -132,34 +131,19 @@ export function MessagesBlock({ className }: { className?: string }) {
                         onClick={handleFastForwardReplay}
                       >
                         <FastForward size={16} />
-                        Fast Forward
+                        快进
                       </Button>
                     )}
                     {!replayStarted && (
                       <Button className="w-24" onClick={handleStartReplay}>
                         <Play size={16} />
-                        Play
+                        播放
                       </Button>
                     )}
                   </div>
                 )}
               </div>
             </Card>
-            {!replayStarted && env.NEXT_PUBLIC_STATIC_WEBSITE_ONLY && (
-              <div className="text-muted-foreground w-full text-center text-xs">
-                * This site is for demo purposes only. If you want to try your
-                own question, please{" "}
-                <a
-                  className="underline"
-                  href="https://github.com/bytedance/deer-flow"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  click here
-                </a>{" "}
-                to clone it locally and run it.
-              </div>
-            )}
           </motion.div>
         </>
       )}

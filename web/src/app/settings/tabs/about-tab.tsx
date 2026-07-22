@@ -11,4 +11,5 @@ import type { Tab } from "./types";
 export const AboutTab: Tab = () => {
   return <Markdown>{about}</Markdown>;
 };
+AboutTab.label = "关于";
 AboutTab.icon = BadgeInfo;

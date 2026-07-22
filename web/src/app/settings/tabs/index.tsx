@@ -12,7 +12,7 @@ export const SETTINGS_TABS = [GeneralTab, MCPTab, AboutTab].map((tab) => {
   return {
     ...tab,
     id: name.replace(/Tab$/, "").toLocaleLowerCase(),
-    label: name.replace(/Tab$/, ""),
+    label: tab.label ?? name.replace(/Tab$/, ""),
     icon: (tab.icon ?? <Settings />) as LucideIcon,
     component: tab,
   };

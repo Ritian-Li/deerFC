@@ -25,13 +25,13 @@ const generalFormSchema = z.object({
   autoAcceptedPlan: z.boolean(),
   enableBackgroundInvestigation: z.boolean(),
   maxPlanIterations: z.number().min(1, {
-    message: "Max plan iterations must be at least 1.",
+    message: "最大规划迭代次数不能小于 1。",
   }),
   maxStepNum: z.number().min(1, {
-    message: "Max step number must be at least 1.",
+    message: "研究计划最大步骤数不能小于 1。",
   }),
   maxSearchResults: z.number().min(1, {
-    message: "Max search results must be at least 1.",
+    message: "每步最大搜索结果数不能小于 1。",
   }),
 });
 
@@ -70,7 +70,7 @@ export const GeneralTab: Tab = ({
   return (
     <div className="flex flex-col gap-4">
       <header>
-        <h1 className="text-lg font-medium">General</h1>
+        <h1 className="text-lg font-medium">通用</h1>
       </header>
       <main>
         <div className="text-muted-foreground bg-muted/50 mb-6 rounded-md border p-3 text-xs leading-relaxed">
@@ -83,7 +83,7 @@ export const GeneralTab: Tab = ({
               name="maxPlanIterations"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Max plan iterations</FormLabel>
+                  <FormLabel>最大规划迭代次数</FormLabel>
                   <FormControl>
                     <Input
                       className="w-60"
@@ -96,8 +96,7 @@ export const GeneralTab: Tab = ({
                     />
                   </FormControl>
                   <FormDescription>
-                    Set to 1 for single-step planning. Set to 2 or more to
-                    enable re-planning.
+                    设为 1 表示单轮规划；设为 2 及以上可启用重新规划。
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -108,7 +107,7 @@ export const GeneralTab: Tab = ({
               name="maxStepNum"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Max steps of a research plan</FormLabel>
+                  <FormLabel>研究计划最大步骤数</FormLabel>
                   <FormControl>
                     <Input
                       className="w-60"
@@ -121,7 +120,7 @@ export const GeneralTab: Tab = ({
                     />
                   </FormControl>
                   <FormDescription>
-                    By default, each research plan has 3 steps.
+                    默认每个研究计划 3 步。
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -132,7 +131,7 @@ export const GeneralTab: Tab = ({
               name="maxSearchResults"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Max search results</FormLabel>
+                  <FormLabel>每步最大搜索结果数</FormLabel>
                   <FormControl>
                     <Input
                       className="w-60"
@@ -145,7 +144,7 @@ export const GeneralTab: Tab = ({
                     />
                   </FormControl>
                   <FormDescription>
-                    By default, each search step has 3 results.
+                    默认每步搜索返回 3 条结果。
                   </FormDescription>
                   <FormMessage />
                 </FormItem>
@@ -158,4 +157,5 @@ export const GeneralTab: Tab = ({
   );
 };
 GeneralTab.displayName = "";
+GeneralTab.label = "通用";
 GeneralTab.icon = Settings;

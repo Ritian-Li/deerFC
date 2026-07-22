@@ -338,7 +338,7 @@ function PythonToolCallResult({ result }: { result: string }) {
   return (
     <>
       <div className="mt-4 font-medium italic">
-        {hasError ? "Error when executing the above code" : "Execution output"}
+        {hasError ? "代码执行出错" : "执行结果"}
       </div>
       <div className="bg-accent mt-2 max-h-[400px] max-w-[calc(100%-120px)] overflow-y-auto rounded-md p-2 text-sm">
         <SyntaxHighlighter
