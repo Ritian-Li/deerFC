@@ -93,7 +93,7 @@ export function MessagesBlock({ className }: { className?: string }) {
     <div className={cn("flex h-full flex-col", className)}>
       <MessageListView className="flex flex-grow" onSendMessage={handleSend} />
       {!isReplay ? (
-        <div className="relative flex h-42 shrink-0 pb-4">
+        <div className="relative flex h-fit min-h-42 shrink-0 pb-4">
           {!responding && messageCount === 0 && (
             <ConversationStarter
               className="absolute top-[-238px] left-0"
@@ -106,6 +106,8 @@ export function MessagesBlock({ className }: { className?: string }) {
             disabled={isFileSkill(currentSkill) ? responding : false}
             value={inputPrefill?.text}
             key={inputPrefill?.seq}
+            // 欢迎页上方的 ConversationStarter 已有同款技能胶囊，避免重复
+            showSkillPills={messageCount > 0}
             onSend={handleSend}
             onCancel={handleCancel}
           />

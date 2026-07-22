@@ -67,6 +67,7 @@ export function InputBox({
   disabled,
   feedback,
   value,
+  showSkillPills = true,
   onSend,
   onCancel,
   onRemoveFeedback,
@@ -79,6 +80,11 @@ export function InputBox({
   feedback?: { option: Option } | null;
   /** Controlled value used to prefill the box from example clicks. */
   value?: string;
+  /**
+   * Render the first-level skill pill row. Off on the welcome screen where
+   * ConversationStarter already shows the same pills (avoids duplication).
+   */
+  showSkillPills?: boolean;
   onSend?: (message: string, options?: { interruptFeedback?: string }) => void;
   onCancel?: () => void;
   onRemoveFeedback?: () => void;
@@ -162,6 +168,7 @@ export function InputBox({
   return (
     <div className="flex w-full flex-col gap-2">
       {/* Skill selector: horizontally scrollable pills, mobile-friendly. */}
+      {showSkillPills && (
       <div className="scrollbar-hide -mx-1 flex items-center gap-2 overflow-x-auto px-1 pb-0.5">
         {SKILLS.map((s) => {
           const active = s.id === currentSkill;
@@ -190,6 +197,7 @@ export function InputBox({
           );
         })}
       </div>
+      )}
       {/* Sub-skill thumbnail cards: scenario presets of the current skill. */}
       <div className="scrollbar-hide -mx-1 flex items-stretch gap-2 overflow-x-auto px-1 pb-0.5">
         {skill.subSkills.map((sub) => {
@@ -274,7 +282,7 @@ export function InputBox({
           disabled={disabled}
           className={cn(
             "m-0 w-full resize-none border-none px-4 py-3 text-lg",
-            size === "large" ? "min-h-32" : "min-h-4",
+            size === "large" ? "min-h-32" : "min-h-16",
             disabled && "cursor-not-allowed opacity-60",
           )}
           style={{ textIndent: feedback ? `${indent}px` : 0 }}
