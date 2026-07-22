@@ -350,20 +350,23 @@ async def generate_ppt(
 
 
 _DOCX_MEDIA = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+_XLSX_MEDIA = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
-async def _run_docx_skill(user: User, skill: str, generate, filename: str):
-    """教育类 skill（组卷/教案）：LLM 生成结构化内容 → Word → 落盘 → 成功才扣次."""
+async def _run_docx_skill(
+    user: User, skill: str, generate, filename: str, media_type: str = _DOCX_MEDIA
+):
+    """文件类 skill（组卷/教案/文档/表格）：LLM 生成结构化内容 → 导出 → 落盘 → 成功才扣次."""
     handle, meter, final_state = await _run_sync_skill(user, skill, generate)
     generated_file_path = final_state["generated_file_path"]
     with open(generated_file_path, "rb") as f:
-        docx_bytes = f.read()
+        file_bytes = f.read()
     os.remove(generated_file_path)
-    file_path = _persist_artifact(user.id, handle.run_id, filename, docx_bytes)
+    file_path = _persist_artifact(user.id, handle.run_id, filename, file_bytes)
     await finish_run_now(handle, user.id, meter, True, file_path=file_path)
     return Response(
-        content=docx_bytes,
-        media_type=_DOCX_MEDIA,
+        content=file_bytes,
+        media_type=media_type,
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
@@ -403,6 +406,43 @@ async def generate_lesson_endpoint(
             prompt, config, sub_skill=sub_id, preset_text=preset_text
         ),
         "lesson.docx",
+    )
+
+
+@app.post("/api/doc/generate")
+async def generate_doc_endpoint(
+    request: SkillPromptRequest, user: User = Depends(get_current_user)
+):
+    """办公文档：一句话需求 → 周报/纪要/策划/公告/简历 Word."""
+    from src.skills import generate_document
+
+    sub_id, preset_text = resolve_sub_skill("doc", request.sub_skill)
+    ref_block, _ = _consume_attachments(user.id, request.attachment_ids)
+    prompt = request.prompt + ref_block
+    return await _run_docx_skill(
+        user,
+        skill_label("doc", sub_id),
+        lambda config: generate_document(prompt, config, preset_text=preset_text),
+        "document.docx",
+    )
+
+
+@app.post("/api/sheet/generate")
+async def generate_sheet_endpoint(
+    request: SkillPromptRequest, user: User = Depends(get_current_user)
+):
+    """数据表格：一句话需求 → 课程表/排班/预算/进度 Excel."""
+    from src.skills import generate_spreadsheet
+
+    sub_id, preset_text = resolve_sub_skill("sheet", request.sub_skill)
+    ref_block, _ = _consume_attachments(user.id, request.attachment_ids)
+    prompt = request.prompt + ref_block
+    return await _run_docx_skill(
+        user,
+        skill_label("sheet", sub_id),
+        lambda config: generate_spreadsheet(prompt, config, preset_text=preset_text),
+        "sheet.xlsx",
+        media_type=_XLSX_MEDIA,
     )
 
 
