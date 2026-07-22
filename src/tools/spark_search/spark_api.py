@@ -89,7 +89,8 @@ class SparkSearchTool(BaseTool):
         headers = {"Content-Type": "application/json"}
 
         try:
-            response = requests.post(url, headers=headers, json=json_body)
+            # 出网抖动时不设超时会挂起整个研究任务、占满并发槽
+            response = requests.post(url, headers=headers, json=json_body, timeout=15)
             response_text = response.text
             if response.status_code != 200:
                 logger.error(
