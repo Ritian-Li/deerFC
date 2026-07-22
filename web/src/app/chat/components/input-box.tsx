@@ -2,22 +2,27 @@
 // SPDX-License-Identifier: MIT
 
 import { AnimatePresence, motion } from "framer-motion";
-import { ArrowUp, X } from "lucide-react";
+import { ArrowUp, FileText, Loader2, Paperclip, X } from "lucide-react";
 import {
+  type ClipboardEvent,
   type KeyboardEvent,
   useCallback,
   useEffect,
   useRef,
   useState,
 } from "react";
+import { toast } from "sonner";
 
 import { Tooltip } from "~/components/deer-flow/tooltip";
 import { Button } from "~/components/ui/button";
 import type { Option } from "~/core/messages";
 import { getSkill, getSubSkill, SKILLS, type SkillTheme } from "~/core/skills";
 import {
+  addAttachmentFiles,
+  removeAttachment,
   setCurrentSkill,
   setCurrentSubSkill,
+  useAttachments,
   useCurrentSkill,
   useCurrentSubSkill,
 } from "~/core/store";
@@ -42,6 +47,18 @@ const THEME_CLASSES: Record<
       "border-orange-500 bg-gradient-to-br from-orange-500/20 to-orange-500/5 text-orange-600 dark:text-orange-400",
     inactive:
       "border-transparent bg-gradient-to-br from-orange-500/8 to-transparent",
+  },
+  cyan: {
+    active:
+      "border-cyan-500 bg-gradient-to-br from-cyan-500/20 to-cyan-500/5 text-cyan-600 dark:text-cyan-400",
+    inactive:
+      "border-transparent bg-gradient-to-br from-cyan-500/8 to-transparent",
+  },
+  teal: {
+    active:
+      "border-teal-500 bg-gradient-to-br from-teal-500/20 to-teal-500/5 text-teal-600 dark:text-teal-400",
+    inactive:
+      "border-transparent bg-gradient-to-br from-teal-500/8 to-transparent",
   },
   green: {
     active:
@@ -94,6 +111,8 @@ export function InputBox({
   const isResearch = currentSkill === "research";
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const feedbackRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const attachments = useAttachments();
 
   // Prefill from example clicks (welcome page / conversation starter).
   useEffect(() => {
@@ -125,6 +144,17 @@ export function InputBox({
       if (disabled || message.trim() === "") {
         return;
       }
+      if (attachments.some((a) => a.status === "uploading")) {
+        toast.error("附件上传中，请稍候再发送");
+        return;
+      }
+      if (
+        !isResearch &&
+        attachments.some((a) => a.kind === "image" && a.status === "ready")
+      ) {
+        toast.error("图片附件仅「深度研究」支持，其他技能请上传文档文件");
+        return;
+      }
       if (onSend) {
         onSend(message, {
           interruptFeedback: feedback?.option.value,
@@ -133,7 +163,32 @@ export function InputBox({
         onRemoveFeedback?.();
       }
     }
-  }, [responding, onCancel, disabled, message, onSend, feedback, onRemoveFeedback]);
+  }, [
+    responding,
+    onCancel,
+    disabled,
+    message,
+    attachments,
+    isResearch,
+    onSend,
+    feedback,
+    onRemoveFeedback,
+  ]);
+
+  const handlePaste = useCallback(
+    (event: ClipboardEvent<HTMLTextAreaElement>) => {
+      const files = Array.from(event.clipboardData?.files ?? []);
+      if (files.length > 0) {
+        event.preventDefault();
+        addAttachmentFiles(files);
+      }
+    },
+    [],
+  );
+
+  const handlePickFiles = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -261,6 +316,54 @@ export function InputBox({
         )}
       </div>
       <div className={cn("bg-card relative rounded-[24px] border", className)}>
+      {/* 附件 chips：缩略图（图片）或 文件名+解析状态（文档） */}
+      {attachments.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 px-4 pt-3">
+          {attachments.map((item) => (
+            <div
+              key={item.localId}
+              className={cn(
+                "bg-accent/50 flex max-w-56 items-center gap-1.5 rounded-lg border py-1 pr-1 pl-1.5 text-xs",
+                item.status === "error" && "border-destructive/50 text-destructive",
+              )}
+            >
+              {item.kind === "image" && item.previewUrl ? (
+                <img
+                  src={item.previewUrl}
+                  alt={item.name}
+                  className="h-8 w-8 rounded object-cover"
+                />
+              ) : (
+                <FileText size={16} className="shrink-0 opacity-60" />
+              )}
+              <div className="min-w-0">
+                <div className="truncate font-medium">{item.name}</div>
+                <div className="text-muted-foreground flex items-center gap-1">
+                  {item.status === "uploading" && (
+                    <>
+                      <Loader2 size={10} className="animate-spin" />
+                      上传解析中…
+                    </>
+                  )}
+                  {item.status === "ready" &&
+                    (item.kind === "image"
+                      ? "图片"
+                      : `已解析 ${item.chars ?? 0} 字`)}
+                  {item.status === "error" && (item.error ?? "失败")}
+                </div>
+              </div>
+              <button
+                type="button"
+                aria-label={`移除附件 ${item.name}`}
+                className="hover:bg-accent shrink-0 cursor-pointer rounded p-1"
+                onClick={() => removeAttachment(item.localId)}
+              >
+                <X size={12} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="w-full">
         <AnimatePresence>
           {feedback && (
@@ -301,17 +404,44 @@ export function InputBox({
           onCompositionStart={() => setImeStatus("active")}
           onCompositionEnd={() => setImeStatus("inactive")}
           onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
           onChange={(event) => {
             setMessage(event.target.value);
           }}
         />
       </div>
       <div className="flex items-center px-4 py-2">
-        <div className="flex grow">
+        <input
+          ref={fileInputRef}
+          type="file"
+          multiple
+          hidden
+          accept=".pdf,.docx,.xlsx,.txt,.md,.csv,image/png,image/jpeg,image/webp,image/gif"
+          onChange={(event) => {
+            const files = Array.from(event.target.files ?? []);
+            if (files.length > 0) {
+              addAttachmentFiles(files);
+            }
+            event.target.value = "";
+          }}
+        />
+        <div className="flex grow items-center gap-2">
+          <Tooltip title="上传文件或图片（也可直接粘贴截图）">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              disabled={locked}
+              onClick={handlePickFiles}
+              aria-label="上传附件"
+            >
+              <Paperclip size={16} />
+            </Button>
+          </Tooltip>
           <span className="text-muted-foreground self-center text-xs">
             {isResearch
-              ? "自动联网检索 · 生成深度研究报告"
-              : `一句话生成${skill.name}，成品可直接下载`}
+              ? "自动联网检索 · 支持上传文件与图片"
+              : `一句话生成${skill.name}，可上传参考文件`}
           </span>
         </div>
         <div className="flex shrink-0 items-center gap-2">

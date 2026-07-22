@@ -44,6 +44,7 @@ export async function generateSkillFile(
   skill: FileSkillId,
   text: string,
   subSkill?: string,
+  attachmentIds?: string[],
 ): Promise<GeneratedFile> {
   const config = FILE_SKILL_CONFIG[skill];
   const response = await authFetch(config.path, {
@@ -51,6 +52,7 @@ export async function generateSkillFile(
     body: JSON.stringify({
       [config.bodyKey]: text,
       ...(subSkill ? { sub_skill: subSkill } : {}),
+      ...(attachmentIds?.length ? { attachment_ids: attachmentIds } : {}),
     }),
   });
   const blob = await response.blob();

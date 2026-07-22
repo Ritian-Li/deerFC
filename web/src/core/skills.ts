@@ -13,13 +13,13 @@
  * default and (except exam) matches v1 behavior.
  */
 
-export type SkillId = "research" | "ppt" | "exam" | "lesson";
+export type SkillId = "research" | "ppt" | "doc" | "sheet" | "exam" | "lesson";
 
 /** Skills that produce a downloadable file (non-SSE, synchronous). */
-export type FileSkillId = "ppt" | "exam" | "lesson";
+export type FileSkillId = "ppt" | "doc" | "sheet" | "exam" | "lesson";
 
 /** Card theme; maps to static tailwind classes in the selector component. */
-export type SkillTheme = "blue" | "orange" | "green" | "purple";
+export type SkillTheme = "blue" | "orange" | "cyan" | "teal" | "green" | "purple";
 
 export interface SubSkillDef {
   id: string;
@@ -164,6 +164,132 @@ export const SKILLS: SkillDef[] = [
         examples: [
           "新员工时间管理培训 PPT",
           "客服沟通技巧内训 PPT",
+        ],
+      },
+    ],
+  },
+  {
+    id: "doc",
+    name: "办公文档",
+    emoji: "📄",
+    theme: "cyan",
+    subSkills: [
+      {
+        id: "weekly",
+        name: "周报总结",
+        emoji: "🗓️",
+        desc: "完成事项·数据亮点·下周计划",
+        placeholder: "本周做了什么（部门/事项/数据）…",
+        examples: [
+          "运营部本周周报：上新3个SKU，GMV环比+12%，下周筹备大促",
+          "个人月度工作总结：负责的小程序上线，DAU破1万",
+        ],
+      },
+      {
+        id: "minutes",
+        name: "会议纪要",
+        emoji: "🧾",
+        desc: "议题结论·决议·行动项",
+        placeholder: "会议主题/讨论要点/结论…",
+        examples: [
+          "周一产品例会纪要：讨论了改版方案，定了7月底上线，张三负责开发排期",
+          "家委会会议纪要：确定秋游时间和费用分摊",
+        ],
+      },
+      {
+        id: "plan",
+        name: "活动策划",
+        emoji: "🎪",
+        desc: "目标·流程·分工·预算",
+        placeholder: "活动类型/时间/对象/预算…",
+        examples: [
+          "公司10周年庆活动策划方案，200人，预算5万",
+          "幼儿园六一亲子活动策划，室内外结合",
+        ],
+      },
+      {
+        id: "notice",
+        name: "通知公告",
+        emoji: "📢",
+        desc: "规范公文体·语气得体",
+        placeholder: "通知什么事/给谁/有什么要求…",
+        examples: [
+          "写一份放假通知：国庆放假8天，值班安排另行通知",
+          "物业停水通知：周六上午9点到下午5点检修",
+        ],
+      },
+      {
+        id: "resume",
+        name: "个人简历",
+        emoji: "🧑‍💼",
+        desc: "STAR经历·量化成果",
+        placeholder: "职位方向/教育背景/工作经历…",
+        examples: [
+          "3年电商运营经验求职简历，做过直播带货，最高单场50万",
+          "应届计算机本科生简历，两段实习经历",
+        ],
+      },
+    ],
+  },
+  {
+    id: "sheet",
+    name: "数据表格",
+    emoji: "📋",
+    theme: "teal",
+    subSkills: [
+      {
+        id: "general",
+        name: "通用表格",
+        emoji: "📋",
+        desc: "任意需求整理成规范表格",
+        placeholder: "描述你要的表格（行/列/内容）…",
+        examples: [
+          "把班级50名学生按成绩分组，做一张分组名单表",
+          "整理一份家庭月度开支记录表",
+        ],
+      },
+      {
+        id: "timetable",
+        name: "课程表",
+        emoji: "🕐",
+        desc: "节次×星期·含时间段",
+        placeholder: "年级/每天几节/科目安排…",
+        examples: [
+          "初一课程表：每天8节，主科每天都有，周五下午社团",
+          "小学三年级课程表，每天6节课",
+        ],
+      },
+      {
+        id: "duty",
+        name: "值日排班",
+        emoji: "🧹",
+        desc: "轮转均衡·职责清晰",
+        placeholder: "人数/周期/岗位…",
+        examples: [
+          "班级45人每天6人值日，按周轮转排一个月",
+          "店里5个店员排下个月的早晚班",
+        ],
+      },
+      {
+        id: "budget",
+        name: "预算明细",
+        emoji: "💰",
+        desc: "单价·数量·小计·合计",
+        placeholder: "预算用途/项目/大致金额…",
+        examples: [
+          "班级元旦晚会预算表，总预算2000元",
+          "小型奶茶店开店预算明细表",
+        ],
+      },
+      {
+        id: "tracker",
+        name: "计划进度",
+        emoji: "📅",
+        desc: "任务·负责人·起止·状态",
+        placeholder: "项目内容/阶段/周期…",
+        examples: [
+          "装修工程3个月进度计划表，含水电木瓦油各阶段",
+          "毕业论文写作3个月推进计划表",
         ],
       },
     ],
@@ -316,7 +442,7 @@ export function getSubSkill(skillId: SkillId, subId: string): SubSkillDef {
 }
 
 export function isFileSkill(id: SkillId): id is FileSkillId {
-  return id === "ppt" || id === "exam" || id === "lesson";
+  return id !== "research";
 }
 
 /** Config for each file-generating skill: endpoint, request body key, UI copy. */
@@ -338,6 +464,18 @@ export const FILE_SKILL_CONFIG: Record<
     bodyKey: "content",
     loadingText: "正在生成 PPT，请稍候（约需 30~60 秒）…",
     defaultFilename: "PPT.pptx",
+  },
+  doc: {
+    path: "doc/generate",
+    bodyKey: "prompt",
+    loadingText: "正在生成文档，请稍候（约需 30~60 秒）…",
+    defaultFilename: "文档.docx",
+  },
+  sheet: {
+    path: "sheet/generate",
+    bodyKey: "prompt",
+    loadingText: "正在生成表格，请稍候（约需 30~60 秒）…",
+    defaultFilename: "表格.xlsx",
   },
   exam: {
     path: "exam/generate",

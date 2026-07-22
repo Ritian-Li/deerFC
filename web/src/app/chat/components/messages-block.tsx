@@ -29,6 +29,7 @@ import { cn } from "~/lib/utils";
 
 import { InputBox } from "./input-box";
 import { MessageListView } from "./message-list-view";
+import { TemplateGallery } from "./template-gallery";
 import { Welcome } from "./welcome";
 
 export function MessagesBlock({ className }: { className?: string }) {
@@ -40,6 +41,8 @@ export function MessagesBlock({ className }: { className?: string }) {
   const [replayStarted, setReplayStarted] = useState(false);
   const currentSkill = useCurrentSkill();
   const currentSubSkill = useCurrentSubSkill();
+  // 模板卡点击后预填输入框的提示词（InputBox 的受控 value 通道）。
+  const [templatePrompt, setTemplatePrompt] = useState<string | undefined>();
   const abortControllerRef = useRef<AbortController | null>(null);
   const handleSend = useCallback(
     async (message: string, options?: { interruptFeedback?: string }) => {
@@ -109,9 +112,14 @@ export function MessagesBlock({ className }: { className?: string }) {
             responding={isFileSkill(currentSkill) ? false : responding}
             disabled={isFileSkill(currentSkill) ? responding : false}
             hero={isLauncher}
+            value={templatePrompt}
             onSend={handleSend}
             onCancel={handleCancel}
           />
+          {/* 模板灵感库：仅启动台展示，会话开始后让位给消息流 */}
+          {isLauncher && (
+            <TemplateGallery onPickTemplate={setTemplatePrompt} />
+          )}
         </div>
       ) : (
         <>

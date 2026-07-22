@@ -102,17 +102,30 @@ def build_lesson_docx(data: dict) -> str:
     return _save(doc, "lesson")
 
 
-def build_speech_docx(data: dict) -> str:
-    """说课稿数据 -> docx。data: {title, meta?, sections:[{heading,content}]}."""
-    doc = _new_doc(data.get("title", "说课稿"))
+def build_sections_docx(
+    data: dict, default_title: str = "文档", prefix: str = "doc"
+) -> str:
+    """通用「标题+小节」文档 -> docx。data: {title, meta?, sections:[{heading,content}]}。
+
+    说课稿与办公文档（周报/纪要/策划/公告/简历）共用此结构。
+    content 中的换行拆成独立段落，保持排版可读。
+    """
+    doc = _new_doc(data.get("title", default_title))
     meta = data.get("meta", "")
     if meta:
         p = doc.add_paragraph(meta)
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     for section in data.get("sections", []):
         doc.add_heading(section.get("heading", ""), level=1)
-        doc.add_paragraph(str(section.get("content", "")))
-    return _save(doc, "speech")
+        for line in str(section.get("content", "")).split("\n"):
+            if line.strip():
+                doc.add_paragraph(line)
+    return _save(doc, prefix)
+
+
+def build_speech_docx(data: dict) -> str:
+    """说课稿数据 -> docx。data: {title, meta?, sections:[{heading,content}]}."""
+    return build_sections_docx(data, default_title="说课稿", prefix="speech")
 
 
 def build_hwdesign_docx(data: dict) -> str:
