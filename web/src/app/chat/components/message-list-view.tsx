@@ -385,11 +385,11 @@ function SkillResultCard({
   message: Message;
 }) {
   const result = message.skillResult!;
-  const skill = getSkill(result.skill as FileSkillId);
+  const skill = getSkill(result.skill);
   // Sub-skill breadcrumb (e.g. 智能组卷 · 随堂测验) so users see which
   // preset produced this deliverable. Falls back to the default sub-skill.
   const subSkill = result.subSkill
-    ? getSubSkill(result.skill as FileSkillId, result.subSkill)
+    ? getSubSkill(result.skill, result.subSkill)
     : undefined;
   const handleDownload = useCallback(() => {
     if (result.blob && result.filename) {

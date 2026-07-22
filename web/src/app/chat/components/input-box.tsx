@@ -328,7 +328,6 @@ export function InputBox({
               )}
             >
               {item.kind === "image" && item.previewUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
                 <img
                   src={item.previewUrl}
                   alt={item.name}
