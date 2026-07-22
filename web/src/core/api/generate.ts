@@ -43,11 +43,15 @@ function parseFilename(disposition: string | null, fallback: string): string {
 export async function generateSkillFile(
   skill: FileSkillId,
   text: string,
+  subSkill?: string,
 ): Promise<GeneratedFile> {
   const config = FILE_SKILL_CONFIG[skill];
   const response = await authFetch(config.path, {
     method: "POST",
-    body: JSON.stringify({ [config.bodyKey]: text }),
+    body: JSON.stringify({
+      [config.bodyKey]: text,
+      ...(subSkill ? { sub_skill: subSkill } : {}),
+    }),
   });
   const blob = await response.blob();
   const filename = parseFilename(

@@ -4,7 +4,11 @@
 import { create } from "zustand";
 
 import type { MCPServerMetadata, SimpleMCPServerMetadata } from "../mcp";
-import { DEFAULT_SKILL_ID, type SkillId } from "../skills";
+import {
+  DEFAULT_SKILL_ID,
+  getDefaultSubSkillId,
+  type SkillId,
+} from "../skills";
 
 const SETTINGS_KEY = "deerflow.settings";
 
@@ -18,6 +22,8 @@ const DEFAULT_SETTINGS: SettingsState = {
   },
   /** Currently selected skill in the chat input. */
   currentSkill: DEFAULT_SKILL_ID,
+  /** Currently selected sub-skill (scenario preset) of the current skill. */
+  currentSubSkill: getDefaultSubSkillId(DEFAULT_SKILL_ID),
   mcp: {
     servers: [],
   },
@@ -32,6 +38,7 @@ export type SettingsState = {
     maxSearchResults: number;
   };
   currentSkill: SkillId;
+  currentSubSkill: string;
   mcp: {
     servers: MCPServerMetadata[];
   };
@@ -63,6 +70,9 @@ export const loadSettings = () => {
       }
     }
     settings.currentSkill ??= DEFAULT_SETTINGS.currentSkill;
+    settings.currentSubSkill ??= getDefaultSubSkillId(
+      settings.currentSkill as SkillId,
+    );
 
     try {
       useSettingsStore.setState(settings);
@@ -134,8 +144,21 @@ export function useCurrentSkill() {
   return useSettingsStore((state) => state.currentSkill);
 }
 
+export function useCurrentSubSkill() {
+  return useSettingsStore((state) => state.currentSubSkill);
+}
+
 export function setCurrentSkill(skill: SkillId) {
-  useSettingsStore.setState({ currentSkill: skill });
+  // Switching skill resets the sub-skill to that skill's default.
+  useSettingsStore.setState({
+    currentSkill: skill,
+    currentSubSkill: getDefaultSubSkillId(skill),
+  });
+  saveSettings();
+}
+
+export function setCurrentSubSkill(subSkill: string) {
+  useSettingsStore.setState({ currentSubSkill: subSkill });
   saveSettings();
 }
 

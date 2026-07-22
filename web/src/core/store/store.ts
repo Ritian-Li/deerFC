@@ -22,7 +22,7 @@ import { StreamError } from "../sse";
 import { parseJSON } from "../utils";
 
 import { openRenewDialog, refreshProfile, setRemainingUses } from "./auth-store";
-import { getChatStreamSettings } from "./settings-store";
+import { getChatStreamSettings, useSettingsStore } from "./settings-store";
 
 const THREAD_ID = nanoid();
 const ONGOING_THREAD_KEY = "deerflow.ongoing-thread";
@@ -138,6 +138,8 @@ export async function sendMessage(
       auto_accepted_plan: true,
       enable_background_investigation:
         settings.enableBackgroundInvestigation ?? true,
+      // Research sub-skill preset; "general" means no preset (v1 behavior).
+      sub_skill: useSettingsStore.getState().currentSubSkill,
       max_plan_iterations: settings.maxPlanIterations,
       max_step_num: settings.maxStepNum,
       max_search_results: settings.maxSearchResults,
@@ -163,7 +165,11 @@ export async function sendMessage(
  * success (download) or error state. Refreshes the quota bar on success.
  * 401/402 are handled globally by authFetch.
  */
-export async function sendFileSkillMessage(skill: FileSkillId, content: string) {
+export async function sendFileSkillMessage(
+  skill: FileSkillId,
+  content: string,
+  subSkill?: string,
+) {
   const threadId = getThreadId();
   const config = FILE_SKILL_CONFIG[skill];
 
@@ -185,6 +191,7 @@ export async function sendFileSkillMessage(skill: FileSkillId, content: string) 
     isStreaming: true,
     skillResult: {
       skill,
+      subSkill,
       status: "loading",
       loadingText: config.loadingText,
     },
@@ -192,9 +199,10 @@ export async function sendFileSkillMessage(skill: FileSkillId, content: string) 
 
   setResponding(true);
   try {
-    const { blob, filename } = await generateSkillFile(skill, content);
+    const { blob, filename } = await generateSkillFile(skill, content, subSkill);
     updateSkillMessage(placeholderId, {
       skill,
+      subSkill,
       status: "success",
       loadingText: config.loadingText,
       filename,
@@ -215,6 +223,7 @@ export async function sendFileSkillMessage(skill: FileSkillId, content: string) 
         : "生成失败，未扣除次数，请重试";
     updateSkillMessage(placeholderId, {
       skill,
+      subSkill,
       status: "error",
       loadingText: config.loadingText,
       errorText: detail,

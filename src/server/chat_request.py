@@ -53,6 +53,9 @@ class ChatRequest(BaseModel):
     enable_background_investigation: Optional[bool] = Field(
         True, description="Whether to get background investigation before plan"
     )
+    sub_skill: Optional[str] = Field(
+        None, description="研究子能力（finance/market/academic/policy），缺省为通用"
+    )
 
 
 class TTSRequest(BaseModel):
@@ -77,10 +80,16 @@ class GeneratePodcastRequest(BaseModel):
 
 class GeneratePPTRequest(BaseModel):
     content: str = Field(..., description="The content of the ppt")
+    sub_skill: Optional[str] = Field(
+        None, description="PPT 子能力（workreport/courseware/pitch/training）"
+    )
 
 
 class SkillPromptRequest(BaseModel):
     prompt: str = Field(..., description="用户对该 skill 的一句话需求")
+    sub_skill: Optional[str] = Field(
+        None, description="子能力 id，缺省走该技能默认行为"
+    )
 
 
 class GenerateProseRequest(BaseModel):

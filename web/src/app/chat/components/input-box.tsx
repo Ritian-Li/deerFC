@@ -15,14 +15,50 @@ import { Detective } from "~/components/deer-flow/icons/detective";
 import { Tooltip } from "~/components/deer-flow/tooltip";
 import { Button } from "~/components/ui/button";
 import type { Option } from "~/core/messages";
-import { getSkill, SKILLS } from "~/core/skills";
+import { getSkill, getSubSkill, SKILLS, type SkillTheme } from "~/core/skills";
 import {
   setCurrentSkill,
+  setCurrentSubSkill,
   setEnableBackgroundInvestigation,
   useCurrentSkill,
+  useCurrentSubSkill,
   useSettingsStore,
 } from "~/core/store";
 import { cn } from "~/lib/utils";
+
+/**
+ * Static tailwind classes per skill theme (must be literal for the JIT
+ * compiler). Same skill → same color family; sub-skills differ by icon.
+ */
+const THEME_CLASSES: Record<
+  SkillTheme,
+  { active: string; inactive: string }
+> = {
+  blue: {
+    active:
+      "border-blue-500 bg-gradient-to-br from-blue-500/20 to-blue-500/5 text-blue-600 dark:text-blue-400",
+    inactive:
+      "border-transparent bg-gradient-to-br from-blue-500/8 to-transparent",
+  },
+  orange: {
+    active:
+      "border-orange-500 bg-gradient-to-br from-orange-500/20 to-orange-500/5 text-orange-600 dark:text-orange-400",
+    inactive:
+      "border-transparent bg-gradient-to-br from-orange-500/8 to-transparent",
+  },
+  green: {
+    active:
+      "border-green-500 bg-gradient-to-br from-green-500/20 to-green-500/5 text-green-600 dark:text-green-400",
+    inactive:
+      "border-transparent bg-gradient-to-br from-green-500/8 to-transparent",
+  },
+  purple: {
+    active:
+      "border-purple-500 bg-gradient-to-br from-purple-500/20 to-purple-500/5 text-purple-600 dark:text-purple-400",
+    inactive:
+      "border-transparent bg-gradient-to-br from-purple-500/8 to-transparent",
+  },
+};
 
 export function InputBox({
   className,
@@ -54,7 +90,10 @@ export function InputBox({
     (state) => state.general.enableBackgroundInvestigation,
   );
   const currentSkill = useCurrentSkill();
+  const currentSubSkill = useCurrentSubSkill();
   const skill = getSkill(currentSkill);
+  const subSkill = getSubSkill(currentSkill, currentSubSkill);
+  const theme = THEME_CLASSES[skill.theme];
   const isResearch = currentSkill === "research";
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const feedbackRef = useRef<HTMLDivElement>(null);
@@ -151,6 +190,62 @@ export function InputBox({
           );
         })}
       </div>
+      {/* Sub-skill thumbnail cards: scenario presets of the current skill. */}
+      <div className="scrollbar-hide -mx-1 flex items-stretch gap-2 overflow-x-auto px-1 pb-0.5">
+        {skill.subSkills.map((sub) => {
+          const active = sub.id === subSkill.id;
+          return (
+            <button
+              key={sub.id}
+              type="button"
+              disabled={locked}
+              onClick={() => {
+                if (!locked) {
+                  setCurrentSubSkill(sub.id);
+                }
+              }}
+              className={cn(
+                "flex w-[72px] shrink-0 flex-col items-center gap-1 rounded-xl border-2 px-1 py-2 transition-all duration-150",
+                active ? theme.active : theme.inactive,
+                !active && "text-muted-foreground opacity-70 hover:opacity-100",
+                locked && "cursor-not-allowed opacity-50",
+              )}
+              aria-pressed={active}
+            >
+              <span
+                className={cn(
+                  "text-[26px] leading-none transition-transform duration-150",
+                  active && "scale-108",
+                )}
+              >
+                {sub.emoji}
+              </span>
+              <span className="text-[11px] leading-tight font-medium whitespace-nowrap">
+                {sub.name}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+      {/* Selected sub-skill hint: description + one clickable example. */}
+      <div className="text-muted-foreground flex min-w-0 items-center gap-2 px-1 text-xs">
+        <span className="shrink-0">{subSkill.desc}</span>
+        {subSkill.examples[0] && (
+          <button
+            type="button"
+            disabled={locked}
+            className="hover:text-foreground min-w-0 cursor-pointer truncate underline-offset-2 hover:underline"
+            onClick={() => {
+              if (!locked) {
+                setMessage(subSkill.examples[0]!);
+                textareaRef.current?.focus();
+              }
+            }}
+          >
+            💡 示例：{subSkill.examples[0]}
+          </button>
+        )}
+      </div>
       <div className={cn("bg-card relative rounded-[24px] border", className)}>
       <div className="w-full">
         <AnimatePresence>
@@ -186,7 +281,7 @@ export function InputBox({
           placeholder={
             feedback
               ? `Describe how you ${feedback.option.text.toLocaleLowerCase()}?`
-              : skill.placeholder
+              : subSkill.placeholder
           }
           value={message}
           onCompositionStart={() => setImeStatus("active")}

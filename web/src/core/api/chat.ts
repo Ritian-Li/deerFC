@@ -22,6 +22,8 @@ export async function* chatStream(
     max_search_results?: number;
     interrupt_feedback?: string;
     enable_background_investigation: boolean;
+    /** Research sub-skill preset id (finance/market/academic/policy). */
+    sub_skill?: string;
     mcp_settings?: {
       servers: Record<
         string,

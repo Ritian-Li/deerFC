@@ -11,6 +11,8 @@ export type MessageRole = "user" | "assistant" | "tool";
 export interface SkillResult {
   /** File skill that produced this message. */
   skill: "ppt" | "exam" | "lesson";
+  /** Sub-skill (scenario preset) used for this run, e.g. "quiz". */
+  subSkill?: string;
   status: "loading" | "success" | "error";
   /** Loading copy shown while generating. */
   loadingText: string;

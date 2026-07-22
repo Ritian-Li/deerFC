@@ -50,7 +50,10 @@ export function ConversationStarter({
         </div>
         <ul className="flex flex-wrap">
           {SKILLS.flatMap((skill) =>
-            skill.examples.slice(0, 1).map((example) => ({ skill, example })),
+            skill.subSkills[0]!.examples.slice(0, 1).map((example) => ({
+              skill,
+              example,
+            })),
           ).map(({ skill, example }, index) => (
             <motion.li
               key={`${skill.id}-${example}`}

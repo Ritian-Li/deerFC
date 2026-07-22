@@ -39,6 +39,7 @@ from src.server.chat_request import (
 )
 from src.server.mcp_request import MCPServerMetadataRequest, MCPServerMetadataResponse
 from src.server.mcp_utils import load_mcp_tools
+from src.skills.presets import resolve_sub_skill, skill_label
 from src.tools import VolcengineTTS
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -99,9 +100,16 @@ async def chat_stream(request: ChatRequest, user: User = Depends(get_current_use
     thread_id = request.thread_id
     if thread_id == "__default__":
         thread_id = str(uuid4())
-    handle, model_conf = await precheck_and_create_run(user.id, thread_id, "research")
+    sub_id, preset_text = resolve_sub_skill("research", request.sub_skill)
+    handle, model_conf = await precheck_and_create_run(
+        user.id, thread_id, skill_label("research", sub_id)
+    )
+    messages = request.model_dump()["messages"]
+    # 子能力预设注入：拼在最后一条用户消息尾部，planner/reporter 全程可见
+    if preset_text and messages and isinstance(messages[-1].get("content"), str):
+        messages[-1]["content"] += f"\n\n【报告要求】{preset_text}"
     input_ = {
-        "messages": request.model_dump()["messages"],
+        "messages": messages,
         "plan_iterations": 0,
         "final_report": "",
         "current_plan": None,
@@ -268,10 +276,14 @@ async def generate_ppt(
     from src.ppt.graph.builder import build_graph as build_ppt_graph
 
     workflow = build_ppt_graph()
+    sub_id, preset_text = resolve_sub_skill("ppt", request.sub_skill)
+    ppt_input = request.content
+    if preset_text:
+        ppt_input = f"【制作要求】{preset_text}\n\n主题：{request.content}"
     handle, meter, final_state = await _run_sync_skill(
         user,
-        "ppt",
-        lambda config: workflow.invoke({"input": request.content}, config=config),
+        skill_label("ppt", sub_id),
+        lambda config: workflow.invoke({"input": ppt_input}, config=config),
     )
     generated_file_path = final_state["generated_file_path"]
     with open(generated_file_path, "rb") as f:
@@ -311,10 +323,11 @@ async def generate_exam_endpoint(
     """智能组卷：一句话需求 → 试卷 Word（题目+答案+解析）."""
     from src.skills import generate_exam
 
+    sub_id, preset_text = resolve_sub_skill("exam", request.sub_skill)
     return await _run_docx_skill(
         user,
-        "exam",
-        lambda config: generate_exam(request.prompt, config),
+        skill_label("exam", sub_id),
+        lambda config: generate_exam(request.prompt, config, preset_text=preset_text),
         "exam.docx",
     )
 
@@ -323,13 +336,16 @@ async def generate_exam_endpoint(
 async def generate_lesson_endpoint(
     request: SkillPromptRequest, user: User = Depends(get_current_user)
 ):
-    """教案生成：一句话需求 → 教案 Word（目标/重难点/过程/板书/作业）."""
+    """教案生成：一句话需求 → 教案/说课稿/分层作业 Word（按子能力分流）."""
     from src.skills import generate_lesson
 
+    sub_id, preset_text = resolve_sub_skill("lesson", request.sub_skill)
     return await _run_docx_skill(
         user,
-        "lesson",
-        lambda config: generate_lesson(request.prompt, config),
+        skill_label("lesson", sub_id),
+        lambda config: generate_lesson(
+            request.prompt, config, sub_skill=sub_id, preset_text=preset_text
+        ),
         "lesson.docx",
     )
 

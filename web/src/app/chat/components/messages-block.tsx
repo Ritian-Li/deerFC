@@ -21,6 +21,7 @@ import {
   sendFileSkillMessage,
   sendMessage,
   useCurrentSkill,
+  useCurrentSubSkill,
   useMessageIds,
   useStore,
 } from "~/core/store";
@@ -39,6 +40,7 @@ export function MessagesBlock({ className }: { className?: string }) {
   const { title: replayTitle, hasError: replayHasError } = useReplayMetadata();
   const [replayStarted, setReplayStarted] = useState(false);
   const currentSkill = useCurrentSkill();
+  const currentSubSkill = useCurrentSubSkill();
   const abortControllerRef = useRef<AbortController | null>(null);
   // Prefill payload for the input box; the counter forces a re-fill even when
   // the same example text is clicked twice.
@@ -51,7 +53,7 @@ export function MessagesBlock({ className }: { className?: string }) {
     async (message: string, options?: { interruptFeedback?: string }) => {
       if (isFileSkill(currentSkill)) {
         // File-generating skill: synchronous endpoint, no SSE.
-        await sendFileSkillMessage(currentSkill, message);
+        await sendFileSkillMessage(currentSkill, message, currentSubSkill);
         return;
       }
       const abortController = new AbortController();
@@ -68,7 +70,7 @@ export function MessagesBlock({ className }: { className?: string }) {
         );
       } catch {}
     },
-    [currentSkill],
+    [currentSkill, currentSubSkill],
   );
   const handleFillExample = useCallback((text: string) => {
     prefillSeq.current += 1;

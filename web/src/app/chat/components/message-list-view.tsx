@@ -25,7 +25,7 @@ import {
 } from "~/components/ui/card";
 import { downloadBlob } from "~/core/api";
 import type { Message } from "~/core/messages";
-import { getSkill, type FileSkillId } from "~/core/skills";
+import { getSkill, getSubSkill, type FileSkillId } from "~/core/skills";
 import {
   closeResearch,
   openResearch,
@@ -386,6 +386,11 @@ function SkillResultCard({
 }) {
   const result = message.skillResult!;
   const skill = getSkill(result.skill as FileSkillId);
+  // Sub-skill breadcrumb (e.g. 智能组卷 · 随堂测验) so users see which
+  // preset produced this deliverable. Falls back to the default sub-skill.
+  const subSkill = result.subSkill
+    ? getSubSkill(result.skill as FileSkillId, result.subSkill)
+    : undefined;
   const handleDownload = useCallback(() => {
     if (result.blob && result.filename) {
       downloadBlob(result.blob, result.filename);
@@ -399,6 +404,11 @@ function SkillResultCard({
           <div className="flex items-center gap-2 text-lg font-medium">
             <span>{skill.emoji}</span>
             <span>{skill.name}</span>
+            {subSkill && subSkill.id !== skill.subSkills[0]!.id && (
+              <span className="text-muted-foreground text-base font-normal">
+                · {subSkill.name}
+              </span>
+            )}
           </div>
         </CardTitle>
       </CardHeader>

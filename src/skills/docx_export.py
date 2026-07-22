@@ -100,3 +100,51 @@ def build_lesson_docx(data: dict) -> str:
         doc.add_heading("七、教学反思", level=1)
         doc.add_paragraph(str(data["reflection"]))
     return _save(doc, "lesson")
+
+
+def build_speech_docx(data: dict) -> str:
+    """说课稿数据 -> docx。data: {title, meta?, sections:[{heading,content}]}."""
+    doc = _new_doc(data.get("title", "说课稿"))
+    meta = data.get("meta", "")
+    if meta:
+        p = doc.add_paragraph(meta)
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for section in data.get("sections", []):
+        doc.add_heading(section.get("heading", ""), level=1)
+        doc.add_paragraph(str(section.get("content", "")))
+    return _save(doc, "speech")
+
+
+def build_hwdesign_docx(data: dict) -> str:
+    """分层作业数据 -> docx。data: {title, meta?, layers:[{name,intent?,time?,items:[]}],
+    answers?, note?}."""
+    doc = _new_doc(data.get("title", "分层作业设计"))
+    meta = data.get("meta", "")
+    if meta:
+        p = doc.add_paragraph(meta)
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    for layer in data.get("layers", []):
+        doc.add_heading(layer.get("name", ""), level=1)
+        intent = layer.get("intent", "")
+        time = layer.get("time", "")
+        if intent or time:
+            doc.add_paragraph(
+                "　".join(
+                    x
+                    for x in (
+                        f"设计意图：{intent}" if intent else "",
+                        f"预计用时：{time}" if time else "",
+                    )
+                    if x
+                )
+            )
+        for item in layer.get("items", []) or []:
+            doc.add_paragraph(str(item))
+    if data.get("answers"):
+        doc.add_page_break()
+        doc.add_heading("参考答案", level=1)
+        doc.add_paragraph(str(data["answers"]))
+    if data.get("note"):
+        doc.add_heading("使用建议", level=1)
+        doc.add_paragraph(str(data["note"]))
+    return _save(doc, "hwdesign")
