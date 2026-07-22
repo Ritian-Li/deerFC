@@ -53,3 +53,4 @@ python-docx>=1.1.0
 # ---- 附件解析 / 表格技能 ----
 openpyxl==3.1.5
 pypdf==5.1.0
+python-multipart>=0.0.9  # FastAPI 解析 multipart 上传（/api/attachments）必需
