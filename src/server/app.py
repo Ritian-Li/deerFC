@@ -34,6 +34,7 @@ from src.server.chat_request import (
     GeneratePodcastRequest,
     GeneratePPTRequest,
     GenerateProseRequest,
+    SkillPromptRequest,
     TTSRequest,
 )
 from src.server.mcp_request import MCPServerMetadataRequest, MCPServerMetadataResponse
@@ -281,6 +282,55 @@ async def generate_ppt(
     return Response(
         content=ppt_bytes,
         media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+    )
+
+
+_DOCX_MEDIA = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+
+
+async def _run_docx_skill(user: User, skill: str, generate, filename: str):
+    """教育类 skill（组卷/教案）：LLM 生成结构化内容 → Word → 落盘 → 成功才扣次."""
+    handle, meter, final_state = await _run_sync_skill(user, skill, generate)
+    generated_file_path = final_state["generated_file_path"]
+    with open(generated_file_path, "rb") as f:
+        docx_bytes = f.read()
+    os.remove(generated_file_path)
+    file_path = _persist_artifact(user.id, handle.run_id, filename, docx_bytes)
+    await finish_run_now(handle, user.id, meter, True, file_path=file_path)
+    return Response(
+        content=docx_bytes,
+        media_type=_DOCX_MEDIA,
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
+
+@app.post("/api/exam/generate")
+async def generate_exam_endpoint(
+    request: SkillPromptRequest, user: User = Depends(get_current_user)
+):
+    """智能组卷：一句话需求 → 试卷 Word（题目+答案+解析）."""
+    from src.skills import generate_exam
+
+    return await _run_docx_skill(
+        user,
+        "exam",
+        lambda config: generate_exam(request.prompt, config),
+        "exam.docx",
+    )
+
+
+@app.post("/api/lesson/generate")
+async def generate_lesson_endpoint(
+    request: SkillPromptRequest, user: User = Depends(get_current_user)
+):
+    """教案生成：一句话需求 → 教案 Word（目标/重难点/过程/板书/作业）."""
+    from src.skills import generate_lesson
+
+    return await _run_docx_skill(
+        user,
+        "lesson",
+        lambda config: generate_lesson(request.prompt, config),
+        "lesson.docx",
     )
 
 

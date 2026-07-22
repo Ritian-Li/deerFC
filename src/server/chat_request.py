@@ -79,6 +79,10 @@ class GeneratePPTRequest(BaseModel):
     content: str = Field(..., description="The content of the ppt")
 
 
+class SkillPromptRequest(BaseModel):
+    prompt: str = Field(..., description="用户对该 skill 的一句话需求")
+
+
 class GenerateProseRequest(BaseModel):
     prompt: str = Field(..., description="The content of the prose")
     option: str = Field(..., description="The option of the prose writer")
