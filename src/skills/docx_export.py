@@ -9,16 +9,99 @@ from io import BytesIO
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Inches, Pt
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Inches, Pt, RGBColor
+
+_INK = RGBColor(0x26, 0x26, 0x26)
+_HEAD_COLOR = RGBColor(0x1F, 0x3A, 0x5F)
+_MUTED = RGBColor(0x7A, 0x7A, 0x7A)
+_NOTICE_RED = "C00000"
 
 
-def _new_doc(title: str) -> Document:
+def _set_style_font(style, name: str, size: int, color=None, bold=None) -> None:
+    """样式字体：latin + eastAsia 都要设，否则中文回落到默认宋体/Calibri 混排。"""
+    style.font.name = name
+    style.font.size = Pt(size)
+    if color is not None:
+        style.font.color.rgb = color
+    if bold is not None:
+        style.font.bold = bold
+    rpr = style.element.get_or_add_rPr()
+    rfonts = rpr.find(qn("w:rFonts"))
+    if rfonts is None:
+        rfonts = OxmlElement("w:rFonts")
+        rpr.append(rfonts)
+    rfonts.set(qn("w:eastAsia"), name)
+
+
+def _add_page_footer(doc: Document) -> None:
+    """页脚居中页码域（PAGE field），打开文档自动更新。"""
+    p = doc.sections[0].footer.paragraphs[0]
+    p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = p.add_run()
+    begin = OxmlElement("w:fldChar")
+    begin.set(qn("w:fldCharType"), "begin")
+    instr = OxmlElement("w:instrText")
+    instr.set(qn("xml:space"), "preserve")
+    instr.text = "PAGE"
+    end = OxmlElement("w:fldChar")
+    end.set(qn("w:fldCharType"), "end")
+    for el in (begin, instr, end):
+        run._r.append(el)
+    run.font.size = Pt(9)
+    run.font.color.rgb = _MUTED
+
+
+def _add_rule(doc: Document, color: str = "1F3A5F", size: int = 8) -> None:
+    """标题下的水平细线（段落下边框实现），size 单位为 1/8 pt。"""
+    p = doc.add_paragraph()
+    p.paragraph_format.space_before = Pt(0)
+    p.paragraph_format.space_after = Pt(10)
+    pPr = p._p.get_or_add_pPr()
+    pBdr = OxmlElement("w:pBdr")
+    bottom = OxmlElement("w:bottom")
+    bottom.set(qn("w:val"), "single")
+    bottom.set(qn("w:sz"), str(size))
+    bottom.set(qn("w:color"), color)
+    pBdr.append(bottom)
+    pPr.append(pBdr)
+
+
+def _new_doc(title: str, variant: str = "default") -> Document:
+    """统一文档骨架：正文/标题样式、页脚页码、标题区。
+
+    variant="notice" 时按公文红头样式渲染标题（红字 + 红色分隔线）。
+    """
     doc = Document()
-    style = doc.styles["Normal"]
-    style.font.name = "宋体"
-    style.font.size = Pt(11)
-    h = doc.add_heading(title, level=0)
+    normal = doc.styles["Normal"]
+    _set_style_font(normal, "宋体", 11, color=_INK)
+    normal.paragraph_format.line_spacing = 1.4
+    normal.paragraph_format.space_after = Pt(4)
+    _set_style_font(doc.styles["Heading 1"], "微软雅黑", 14,
+                    color=_HEAD_COLOR, bold=True)
+    doc.styles["Heading 1"].paragraph_format.space_before = Pt(14)
+    doc.styles["Heading 1"].paragraph_format.space_after = Pt(6)
+    _set_style_font(doc.styles["Heading 2"], "微软雅黑", 12,
+                    color=_HEAD_COLOR, bold=True)
+    _add_page_footer(doc)
+
+    is_notice = variant == "notice"
+    h = doc.add_paragraph()
     h.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    run = h.add_run(title)
+    run.font.name = "微软雅黑"
+    run._r.get_or_add_rPr()
+    rfonts = OxmlElement("w:rFonts")
+    rfonts.set(qn("w:eastAsia"), "微软雅黑")
+    run._r.rPr.append(rfonts)
+    run.font.size = Pt(22)
+    run.font.bold = True
+    run.font.color.rgb = RGBColor(0xC0, 0x00, 0x00) if is_notice else _INK
+    h.paragraph_format.space_before = Pt(6)
+    h.paragraph_format.space_after = Pt(2)
+    _add_rule(doc, color=_NOTICE_RED if is_notice else "1F3A5F",
+              size=16 if is_notice else 8)
     return doc
 
 
@@ -104,23 +187,33 @@ def build_lesson_docx(data: dict) -> str:
 
 
 def build_sections_docx(
-    data: dict, default_title: str = "文档", prefix: str = "doc"
+    data: dict,
+    default_title: str = "文档",
+    prefix: str = "doc",
+    variant: str = "default",
 ) -> str:
     """通用「标题+小节」文档 -> docx。data: {title, meta?, sections:[{heading,content}]}。
 
     说课稿与办公文档（周报/纪要/策划/公告/简历）共用此结构。
     content 中的换行拆成独立段落，保持排版可读。
+    variant="notice" 走公文样式：红头标题 + 正文首行缩进两字符。
     """
-    doc = _new_doc(data.get("title", default_title))
+    doc = _new_doc(data.get("title", default_title), variant=variant)
     meta = data.get("meta", "")
     if meta:
-        p = doc.add_paragraph(meta)
+        p = doc.add_paragraph()
         p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        run = p.add_run(meta)
+        run.font.size = Pt(10)
+        run.font.color.rgb = _MUTED
     for section in data.get("sections", []):
         doc.add_heading(section.get("heading", ""), level=1)
         for line in str(section.get("content", "")).split("\n"):
-            if line.strip():
-                doc.add_paragraph(line)
+            if not line.strip():
+                continue
+            p = doc.add_paragraph(line)
+            if variant == "notice":
+                p.paragraph_format.first_line_indent = Pt(22)
         chart = section.get("chart")
         if chart:
             _embed_chart(doc, chart)

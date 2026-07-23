@@ -96,6 +96,96 @@ class TestPptxExport:
         assert set(THEMES) == {"business", "consult", "academic"}
 
 
+class TestMckAdapter:
+    def test_full_storyline_renders(self):
+        from src.skills.mck_adapter import build_mck_deck
+
+        deck = {
+            "slides": [
+                {"layout": "cover", "title": "复盘", "subtitle": "s", "author": "", "date": ""},
+                {"layout": "toc", "items": [{"num": "", "title": "大盘", "desc": "d"}]},
+                {"layout": "big_number", "title": "用户破千", "number": "1,200", "unit": "人",
+                 "description": "d", "details": ["a", "b"]},
+                {"layout": "donut", "title": "占比集中",
+                 "segments": [{"label": "PPT", "pct": 45}, {"label": "其他", "pct": 55}],
+                 "center_label": "45%", "center_sub": "PPT"},
+                {"layout": "closing", "title": "", "message": ""},
+            ]
+        }
+        path = build_mck_deck(deck)
+        from pptx import Presentation
+
+        assert len(list(Presentation(path).slides)) == 5
+        os.remove(path)
+
+    def test_guard_rails(self):
+        from src.skills.mck_adapter import _chevron, _timeline, _title
+
+        # 行动标题超 40 字截断
+        assert len(_title({"title": "超" * 60})) == 40
+        # chevron 超 5 步截断、label 去换行
+        out = _chevron({"title": "t", "steps": [
+            {"label": f"第\n{i}", "title": "x", "desc": "y"} for i in range(8)]})
+        assert len(out["steps"]) == 5
+        assert all("\n" not in s[0] for s in out["steps"])
+        # timeline 最后一个 label 压到 6 字内
+        out = _timeline({"title": "t", "milestones": [
+            {"label": "很长很长的标签啊", "desc": "d"}]})
+        assert len(out["milestones"][-1][0]) <= 6
+
+    def test_empty_or_unknown_raises(self):
+        import pytest
+
+        from src.skills.mck_adapter import build_mck_deck
+
+        with pytest.raises(ValueError):
+            build_mck_deck({"slides": [{"layout": "nope", "title": "x"}]})
+
+    def test_auto_cover_and_closing(self):
+        from src.skills.mck_adapter import build_mck_deck
+
+        path = build_mck_deck({"slides": [
+            {"layout": "big_number", "title": "只有一页", "number": "1", "unit": "",
+             "description": ""}]})
+        from pptx import Presentation
+
+        assert len(list(Presentation(path).slides)) == 3  # 自动补 cover + closing
+        os.remove(path)
+
+
+class TestDocxStyling:
+    def test_footer_page_number_and_styles(self):
+        from src.skills.docx_export import build_sections_docx
+
+        path = build_sections_docx(
+            {"title": "周报", "sections": [{"heading": "一、进展", "content": "推进中"}]}
+        )
+        import docx
+
+        d = docx.Document(path)
+        footer_xml = d.sections[0].footer.paragraphs[0]._p.xml
+        assert "PAGE" in footer_xml  # 页码域存在
+        assert d.styles["Heading 1"].font.name == "微软雅黑"
+        os.remove(path)
+
+    def test_notice_variant_red_title_and_indent(self):
+        from src.skills.docx_export import build_sections_docx
+
+        path = build_sections_docx(
+            {"title": "关于放假的通知", "sections": [{"heading": "一、安排", "content": "正文段落"}]},
+            variant="notice",
+        )
+        import docx
+        from docx.shared import RGBColor
+
+        d = docx.Document(path)
+        title_run = d.paragraphs[0].runs[0]
+        assert title_run.font.color.rgb == RGBColor(0xC0, 0x00, 0x00)
+        body = [p for p in d.paragraphs if p.text == "正文段落"][0]
+        assert body.paragraph_format.first_line_indent is not None
+        os.remove(path)
+
+
 class TestDocChart:
     def test_sections_docx_with_chart_embeds_image(self):
         from src.skills.charts import _cjk_font

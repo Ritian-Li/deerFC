@@ -420,7 +420,9 @@ async def generate_doc_endpoint(
     return await _run_docx_skill(
         user,
         skill_label("doc", sub_id),
-        lambda config: generate_document(prompt, config, preset_text=preset_text),
+        lambda config: generate_document(
+            prompt, config, preset_text=preset_text, sub_skill=sub_id
+        ),
         "document.docx",
     )
 

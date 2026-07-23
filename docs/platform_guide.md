@@ -120,9 +120,15 @@ curl localhost:14420/api/admin/stats/daily -H "X-Admin-Token: $ADMIN_TOKEN"
 
 ### PPT / 文档图表（2026-07 起为纯 Python 管线）
 
-- **PPT 已改 python-pptx 直出**（`src/skills/slides.py` + `pptx_export.py`）：
-  3 主题（business/consult/academic，按子能力自动选）× 10 版式，
-  bar/pie/line 为 pptx 原生图表对象、用户可二次编辑；不再依赖 marp / chrome。
+- **PPT 默认走 mck 引擎**（`src/skills/mck_ppt/`，vendored 自
+  [Mck-ppt-design-skill](https://github.com/likaku/Mck-ppt-design-skill)，Apache-2.0，
+  保留原版权头与 NOTICE）：麦肯锡咨询风设计系统，行动标题 + 25 个精选版式
+  （执行摘要/环图/分组柱状/KPI 进度/SWOT/流程箭头…），LLM 出 storyline JSON，
+  `mck_adapter.py` 注入配色并执行防坑规则（标题 ≤40 字、chevron ≤5 步等）。
+  设 `PLATFORM_PPT_ENGINE=classic` 回退自研 `pptx_export.py` 多主题管线
+  （3 主题 × 10 版式、原生可编辑图表）。两条管线都不依赖 marp / chrome。
+- **Word 统一样式基建**（`docx_export._new_doc`）：微软雅黑藏蓝标题、页脚页码域、
+  标题分隔线；公告（doc:notice）自动走公文红头（红标题 + 红线 + 首行缩进）。
 - **办公文档可嵌数据图表**（`src/skills/charts.py`）：matplotlib(Agg) 出 PNG 嵌入 docx；
   中文标签依赖系统 CJK 字体（服务器已有 `fonts-noto-cjk`），探测不到时自动降级为文字列举。
 - 依赖：`python-pptx>=1.0.2`、`matplotlib>=3.9`（已入 requirements-platform.txt）。

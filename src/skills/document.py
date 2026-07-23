@@ -31,11 +31,13 @@ chart 为可选字段：仅当该小节的数据存在对比/趋势/占比关系
 values 只能是数字，数字必须来自用户材料，材料没有就不出图，不得为了配图编数据。"""
 
 
-def generate_document(prompt: str, config: dict, preset_text: str = "") -> dict:
+def generate_document(
+    prompt: str, config: dict, preset_text: str = "", sub_skill: str | None = None
+) -> dict:
     """一句话需求 -> 结构化办公文档 -> Word 文件。
 
     子能力（周报/纪要/策划/公告/简历）以 preset_text 注入结构约束，
-    共用同一 JSON schema 与导出器。
+    共用同一 JSON schema 与导出器；公告（notice）走公文红头排版。
     """
     system = DOC_SYSTEM_PROMPT
     if preset_text:
@@ -47,5 +49,8 @@ def generate_document(prompt: str, config: dict, preset_text: str = "") -> dict:
     ]
     resp = llm.invoke(messages, config=config)
     data = parse_json_response(resp.content)
-    path = build_sections_docx(data, default_title="文档", prefix="document")
+    variant = "notice" if sub_skill == "notice" else "default"
+    path = build_sections_docx(
+        data, default_title="文档", prefix="document", variant=variant
+    )
     return {"generated_file_path": path, "title": data.get("title", "文档")}
