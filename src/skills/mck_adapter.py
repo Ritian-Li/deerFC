@@ -12,6 +12,9 @@ import logging
 import os
 import uuid
 
+from pptx.dml.color import RGBColor
+from pptx.util import Inches, Pt
+
 from src.skills.mck_ppt.constants import (
     ACCENT_BLUE,
     ACCENT_PAIRS,
@@ -20,11 +23,18 @@ from src.skills.mck_ppt.constants import (
     LIGHT_ORANGE,
     LIGHT_RED,
     NAVY,
+    SH,
+    SW,
 )
 
 logger = logging.getLogger(__name__)
 
 _LIGHTS = [LIGHT_BLUE, LIGHT_GREEN, LIGHT_ORANGE, LIGHT_RED]
+
+# 深色页专用色：金色点缀线 + 弱化文字/巨型章节数字
+_GOLD = RGBColor(0xD9, 0xA4, 0x41)
+_PALE_ON_NAVY = RGBColor(0xB8, 0xC6, 0xD4)
+_GHOST_ON_NAVY = RGBColor(0x14, 0x35, 0x4E)
 
 
 def _s(v, limit: int = 0) -> str:
@@ -328,13 +338,73 @@ _ADAPTERS = {
 }
 
 
+def _platform_engine_cls():
+    """封面/章节/结尾页覆写为深色满版设计（金色点缀），内容页沿用上游排版。
+
+    延迟构造：避免模块导入期就加载 3k 行的 engine。
+    """
+    from pptx.enum.text import PP_ALIGN
+
+    from src.skills.mck_ppt.core import add_rect, add_text
+    from src.skills.mck_ppt.engine import MckEngine
+
+    class PlatformEngine(MckEngine):
+        def cover(self, title, subtitle="", author="", date="", cover_image=None):
+            s = self._ns()
+            add_rect(s, 0, 0, SW, SH, NAVY)
+            add_rect(s, Inches(1.0), Inches(2.72), Inches(0.75), Pt(4), _GOLD)
+            add_text(s, Inches(1.0), Inches(3.0), Inches(11.3), Inches(1.7),
+                     title, font_size=Pt(40), bold=True,
+                     font_color=RGBColor(0xFF, 0xFF, 0xFF))
+            y = Inches(4.35)
+            if subtitle:
+                add_text(s, Inches(1.0), y, Inches(11.3), Inches(0.6),
+                         subtitle, font_size=Pt(18), font_color=_PALE_ON_NAVY)
+            meta = " · ".join(x for x in (author, date) if x)
+            if meta:
+                add_text(s, Inches(1.0), SH - Inches(1.0), Inches(11), Inches(0.4),
+                         meta, font_size=Pt(13), font_color=_PALE_ON_NAVY)
+            return s
+
+        def section_divider(self, section_label, title, subtitle=""):
+            s = self._ns()
+            add_rect(s, 0, 0, SW, SH, NAVY)
+            # 巨型幽灵章节号：深色页的视觉签名
+            add_text(s, Inches(7.6), Inches(1.1), Inches(5.4), Inches(4.5),
+                     str(section_label), font_size=Pt(220), bold=True,
+                     font_color=_GHOST_ON_NAVY)
+            add_rect(s, Inches(1.0), Inches(3.02), Inches(0.6), Pt(3.5), _GOLD)
+            add_text(s, Inches(1.0), Inches(3.3), Inches(9.5), Inches(1.2),
+                     title, font_size=Pt(32), bold=True,
+                     font_color=RGBColor(0xFF, 0xFF, 0xFF))
+            if subtitle:
+                add_text(s, Inches(1.0), Inches(4.5), Inches(9.5), Inches(0.6),
+                         subtitle, font_size=Pt(15), font_color=_PALE_ON_NAVY)
+            return s
+
+        def closing(self, title, message="", source_text=""):
+            s = self._ns()
+            add_rect(s, 0, 0, SW, SH, NAVY)
+            add_rect(s, Inches(6.29), Inches(3.0), Inches(0.75), Pt(4), _GOLD)
+            add_text(s, 0, Inches(3.25), SW, Inches(0.9), title,
+                     font_size=Pt(34), bold=True,
+                     font_color=RGBColor(0xFF, 0xFF, 0xFF),
+                     alignment=PP_ALIGN.CENTER)
+            if message:
+                add_text(s, 0, Inches(4.25), SW, Inches(0.6), message,
+                         font_size=Pt(15), font_color=_PALE_ON_NAVY,
+                         alignment=PP_ALIGN.CENTER)
+            return s
+
+    return PlatformEngine
+
+
 def build_mck_deck(data: dict) -> str:
     """LLM storyline JSON -> 咨询风 pptx 文件路径。
 
     data: {"slides": [{"layout": "...", ...字段见 _ADAPTERS...}]}
     """
     from src.skills.mck_ppt.core import full_cleanup
-    from src.skills.mck_ppt.engine import MckEngine
 
     raw_slides = [s for s in data.get("slides", []) if isinstance(s, dict)]
     storyline = []
@@ -355,7 +425,7 @@ def build_mck_deck(data: dict) -> str:
     if storyline[-1]["type"] != "closing":
         storyline.append({"type": "closing", "data": _closing({})})
 
-    eng = MckEngine(total_slides=len(storyline))
+    eng = _platform_engine_cls()(total_slides=len(storyline))
     errors = 0
     for spec in storyline:
         try:

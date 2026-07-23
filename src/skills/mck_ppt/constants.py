@@ -78,6 +78,8 @@ BODY_SIZE          = Pt(14)
 SMALL_SIZE         = Pt(12)
 FOOTNOTE_SIZE      = Pt(9)
 
-FONT_HEADER = 'Georgia'
-FONT_BODY   = 'Arial'
-FONT_EA     = 'KaiTi'
+# [Modified 2026-07-23 by deer-flow platform] 中文商务场景字体现代化：
+# 原值 Georgia / Arial / KaiTi（楷体正文对国内商务受众显陈旧），改为微软雅黑体系。
+FONT_HEADER = '微软雅黑'
+FONT_BODY   = '微软雅黑'
+FONT_EA     = '微软雅黑'
