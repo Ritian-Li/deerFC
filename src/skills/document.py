@@ -21,9 +21,14 @@ DOC_SYSTEM_PROMPT = """你是一位文笔扎实的办公文书写手。根据用
   "meta": "副标题/署名/日期行，可留空",
   "sections": [
     {"heading": "一、小节标题", "content": "小节正文，可用\\n分段"},
-    {"heading": "二、小节标题", "content": "..."}
+    {"heading": "二、小节标题", "content": "...",
+     "chart": {"type": "bar", "title": "图表标题",
+               "categories": ["类目"], "series": [{"name": "系列名", "values": [1, 2]}]}}
   ]
-}"""
+}
+
+chart 为可选字段：仅当该小节的数据存在对比/趋势/占比关系时才加（type 可选 bar/line/pie），
+values 只能是数字，数字必须来自用户材料，材料没有就不出图，不得为了配图编数据。"""
 
 
 def generate_document(prompt: str, config: dict, preset_text: str = "") -> dict:

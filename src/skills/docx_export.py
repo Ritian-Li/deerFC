@@ -5,10 +5,11 @@
 
 import os
 import uuid
+from io import BytesIO
 
 from docx import Document
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-from docx.shared import Pt
+from docx.shared import Inches, Pt
 
 
 def _new_doc(title: str) -> Document:
@@ -120,7 +121,30 @@ def build_sections_docx(
         for line in str(section.get("content", "")).split("\n"):
             if line.strip():
                 doc.add_paragraph(line)
+        chart = section.get("chart")
+        if chart:
+            _embed_chart(doc, chart)
     return _save(doc, prefix)
+
+
+def _embed_chart(doc: Document, chart: dict) -> None:
+    """小节数据图表：matplotlib 出 PNG 嵌入；渲染失败降级为文字列举。"""
+    from src.skills.charts import render_chart_png
+
+    png = render_chart_png(chart)
+    if png:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+        p.add_run().add_picture(BytesIO(png), width=Inches(5.6))
+        return
+    categories = chart.get("categories", [])
+    for ser in chart.get("series", []):
+        pairs = "，".join(
+            f"{c}：{v}" for c, v in zip(categories, ser.get("values", []))
+        )
+        name = ser.get("name", "")
+        if pairs:
+            doc.add_paragraph(f"{name}：{pairs}" if name else pairs)
 
 
 def build_speech_docx(data: dict) -> str:
