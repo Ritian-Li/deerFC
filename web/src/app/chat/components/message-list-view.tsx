@@ -3,7 +3,13 @@
 
 import { LoadingOutlined } from "@ant-design/icons";
 import { motion } from "framer-motion";
-import { CheckCircle2, Download, FileText, Headphones } from "lucide-react";
+import {
+  CheckCircle2,
+  Download,
+  FileText,
+  Headphones,
+  RotateCcw,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { LoadingAnimation } from "~/components/deer-flow/loading-animation";
@@ -29,6 +35,7 @@ import { getSkill, getSubSkill, type FileSkillId } from "~/core/skills";
 import {
   closeResearch,
   openResearch,
+  retryFileSkillMessage,
   useLastFeedbackMessageId,
   useLastInterruptMessage,
   useMessage,
@@ -385,6 +392,7 @@ function SkillResultCard({
   message: Message;
 }) {
   const result = message.skillResult!;
+  const responding = useStore((state) => state.responding);
   const skill = getSkill(result.skill);
   // Sub-skill breadcrumb (e.g. 智能组卷 · 随堂测验) so users see which
   // preset produced this deliverable. Falls back to the default sub-skill.
@@ -438,13 +446,26 @@ function SkillResultCard({
           </div>
         )}
         {result.status === "error" && (
-          <div className="flex flex-col gap-1">
-            <div className="text-muted-foreground text-sm">
-              {result.errorText ?? "生成失败，未扣除次数，请重试"}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-1">
+              <div className="text-muted-foreground text-sm">
+                {result.errorText ?? "生成失败，未扣除次数，请重试"}
+              </div>
+              <div className="text-xs text-green-600">
+                本次未扣除次数，可放心重试。
+              </div>
             </div>
-            <div className="text-xs text-green-600">
-              本次未扣除次数，可放心重试。
-            </div>
+            {result.sourceText && (
+              <Button
+                className="w-full sm:w-auto"
+                variant="outline"
+                disabled={responding}
+                onClick={() => void retryFileSkillMessage(message.id)}
+              >
+                <RotateCcw size={16} />
+                重试
+              </Button>
+            )}
           </div>
         )}
       </CardContent>

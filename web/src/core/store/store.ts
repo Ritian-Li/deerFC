@@ -190,6 +190,10 @@ export async function sendFileSkillMessage(
   });
 
   const placeholderId = nanoid();
+  const attachmentIds = getReadyAttachmentIds();
+  if (attachmentIds.length) {
+    clearAttachments();
+  }
   appendMessage({
     id: placeholderId,
     threadId,
@@ -202,26 +206,63 @@ export async function sendFileSkillMessage(
       subSkill,
       status: "loading",
       loadingText: config.loadingText,
+      sourceText: content,
+      attachmentIds,
     },
   });
+  await runFileSkillGeneration(placeholderId, skill, content, subSkill, {
+    attachmentIds,
+    removeOnAuthError: true,
+  });
+}
 
-  setResponding(true);
-  const attachmentIds = getReadyAttachmentIds();
-  if (attachmentIds.length) {
-    clearAttachments();
+/** Retry a failed file-skill card in place (no new user bubble). */
+export async function retryFileSkillMessage(messageId: string) {
+  const message = useStore.getState().messages.get(messageId);
+  const result = message?.skillResult;
+  if (!result || result.status !== "error" || !result.sourceText) {
+    return;
   }
+  updateSkillMessage(messageId, {
+    ...result,
+    status: "loading",
+    errorText: undefined,
+  });
+  await runFileSkillGeneration(
+    messageId,
+    result.skill,
+    result.sourceText,
+    result.subSkill,
+    { attachmentIds: result.attachmentIds },
+  );
+}
+
+async function runFileSkillGeneration(
+  placeholderId: string,
+  skill: FileSkillId,
+  content: string,
+  subSkill: string | undefined,
+  options: { attachmentIds?: string[]; removeOnAuthError?: boolean } = {},
+) {
+  const config = FILE_SKILL_CONFIG[skill];
+  const base = {
+    skill,
+    subSkill,
+    loadingText: config.loadingText,
+    sourceText: content,
+    attachmentIds: options.attachmentIds,
+  };
+  setResponding(true);
   try {
     const { blob, filename } = await generateSkillFile(
       skill,
       content,
       subSkill,
-      attachmentIds,
+      options.attachmentIds,
     );
     updateSkillMessage(placeholderId, {
-      skill,
-      subSkill,
+      ...base,
       status: "success",
-      loadingText: config.loadingText,
       filename,
       blob,
     });
@@ -229,9 +270,13 @@ export async function sendFileSkillMessage(
     void refreshProfile();
   } catch (error) {
     if (error instanceof ApiError && (error.status === 401 || error.status === 402)) {
-      // authFetch already redirected / opened the renew dialog. Drop the
-      // placeholder so the UI isn't left with a stuck loading card.
-      removeMessage(placeholderId);
+      // authFetch already redirected / opened the renew dialog. On first send
+      // drop the placeholder; on retry keep the card so context isn't lost.
+      if (options.removeOnAuthError) {
+        removeMessage(placeholderId);
+      } else {
+        updateSkillMessage(placeholderId, { ...base, status: "error" });
+      }
       return;
     }
     const detail =
@@ -239,10 +284,8 @@ export async function sendFileSkillMessage(
         ? error.detail
         : "生成失败，未扣除次数，请重试";
     updateSkillMessage(placeholderId, {
-      skill,
-      subSkill,
+      ...base,
       status: "error",
-      loadingText: config.loadingText,
       errorText: detail,
     });
   } finally {

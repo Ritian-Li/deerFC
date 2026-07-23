@@ -24,6 +24,10 @@ export interface SkillResult {
   blob?: Blob;
   /** Friendly error message (backend detail) when status === "error". */
   errorText?: string;
+  /** Original user prompt — kept so a failed card can retry in place. */
+  sourceText?: string;
+  /** Attachment ids sent with the original request (reused on retry). */
+  attachmentIds?: string[];
 }
 
 export interface Message {
