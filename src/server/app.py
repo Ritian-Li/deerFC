@@ -319,33 +319,31 @@ async def generate_podcast(
     return Response(content=audio_bytes, media_type="audio/mp3")
 
 
+_PPTX_MEDIA = (
+    "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+)
+
+
 @app.post("/api/ppt/generate")
 async def generate_ppt(
     request: GeneratePPTRequest, user: User = Depends(get_current_user)
 ):
-    from src.ppt.graph.builder import build_graph as build_ppt_graph
+    """PPT 生成：python-pptx 直出（原生图表/多主题），不再走 marp+chrome."""
+    from src.skills.pptx_styles import resolve_theme
+    from src.skills.slides import generate_slides
 
-    workflow = build_ppt_graph()
     sub_id, preset_text = resolve_sub_skill("ppt", request.sub_skill)
     ref_block, _ = _consume_attachments(user.id, request.attachment_ids)
-    ppt_input = request.content
-    if preset_text:
-        ppt_input = f"【制作要求】{preset_text}\n\n主题：{request.content}"
-    ppt_input += ref_block
-    handle, meter, final_state = await _run_sync_skill(
+    prompt = request.content + ref_block
+    theme = resolve_theme(sub_id).name
+    return await _run_docx_skill(
         user,
         skill_label("ppt", sub_id),
-        lambda config: workflow.invoke({"input": ppt_input}, config=config),
-    )
-    generated_file_path = final_state["generated_file_path"]
-    with open(generated_file_path, "rb") as f:
-        ppt_bytes = f.read()
-    # ppt_generator 写在临时目录，统一挪进产物目录便于清理与配额管理
-    file_path = _persist_artifact(user.id, handle.run_id, "slides.pptx", ppt_bytes)
-    await finish_run_now(handle, user.id, meter, True, file_path=file_path)
-    return Response(
-        content=ppt_bytes,
-        media_type="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+        lambda config: generate_slides(
+            prompt, config, preset_text=preset_text, theme=theme
+        ),
+        "slides.pptx",
+        media_type=_PPTX_MEDIA,
     )
 
 

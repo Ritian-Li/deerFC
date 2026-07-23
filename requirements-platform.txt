@@ -54,3 +54,7 @@ python-docx>=1.1.0
 openpyxl==3.1.5
 pypdf==5.1.0
 python-multipart>=0.0.9  # FastAPI 解析 multipart 上传（/api/attachments）必需
+
+# ---- PPT 直出 / 文档图表 ----
+python-pptx>=1.0.2  # /api/ppt 改为 python-pptx 直出，摆脱 marp+chrome
+matplotlib>=3.9  # 办公文档嵌入数据图表（Agg 后端出 PNG）

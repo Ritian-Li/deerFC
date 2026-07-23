@@ -100,7 +100,7 @@ curl localhost:14420/api/admin/stats/daily -H "X-Admin-Token: $ADMIN_TOKEN"
 | 技能 | 接口 | 产出 | 依赖 |
 |---|---|---|---|
 | 深度研究 | POST /api/chat/stream (SSE) | 长报告（网页展示） | 搜索引擎（spark） |
-| 做 PPT | POST /api/ppt/generate `{content}` | .pptx | marp + chrome-headless-shell |
+| 做 PPT | POST /api/ppt/generate `{content}` | .pptx（原生图表，3 主题 10 版式） | python-pptx |
 | 办公文档 | POST /api/doc/generate `{prompt}` | 周报/纪要/策划/公告/简历 .docx | python-docx |
 | 数据表格 | POST /api/sheet/generate `{prompt}` | 课程表/排班/预算/进度 .xlsx | openpyxl |
 | 智能组卷 | POST /api/exam/generate `{prompt}` | 试卷 .docx（题+答案+解析） | python-docx |
@@ -118,26 +118,18 @@ curl localhost:14420/api/admin/stats/daily -H "X-Admin-Token: $ADMIN_TOKEN"
 - 依赖：`pip install openpyxl==3.1.5 pypdf==5.1.0`（已入 requirements-platform.txt；纯 Python，无系统库）
 - 前端：输入框 📎 上传 + 直接粘贴截图；启动台另有 12 张办公模板卡（`web/src/core/templates.ts`，纯前端改文案即可上新）
 
-### 服务器基础设施依赖（重建服务器时需重装）
-PPT 技能依赖较重，一次性配置好：
-```bash
-# 1. python-docx（组卷/教案）
-.venv/bin/pip install python-docx
-# 2. marp（PPT）
-npm install -g @marp-team/marp-cli
-# 3. chrome-headless-shell（marp 导 pptx 需要，服务器连不上谷歌，用国内镜像）
-curl -L -o /tmp/chs.zip "https://cdn.npmmirror.com/binaries/chrome-for-testing/131.0.6778.264/linux64/chrome-headless-shell-linux64.zip"
-unzip /tmp/chs.zip -d /opt/
-# 4. chrome 运行所需系统库
-apt-get install -y libatk1.0-0 libatk-bridge2.0-0 libcups2 libxkbcommon0 libxcomposite1 \
-  libxdamage1 libxrandr2 libgbm1 libpango-1.0-0 libasound2t64 libnss3 libxfixes3 \
-  libxext6 libxi6 libxtst6 libdrm2 libxshmfence1 libgtk-3-0 fonts-noto-cjk
-# 5. chrome 包装脚本（root 下需 --no-sandbox 等 flag）/opt/chrome-wrapper.sh
-#    内容：exec /opt/chrome-headless-shell-linux64/chrome-headless-shell \
-#          --no-sandbox --disable-dev-shm-usage --disable-gpu --headless=new "$@"
-# 6. systemd 服务加环境：CHROME_PATH=/opt/chrome-wrapper.sh、HOME=/root
-```
-注意：marp 渲染彩色 emoji / 外链图片会挂起，代码已在 `ppt_generator_node._sanitize_markdown` 里剥离，无需额外处理。
+### PPT / 文档图表（2026-07 起为纯 Python 管线）
+
+- **PPT 已改 python-pptx 直出**（`src/skills/slides.py` + `pptx_export.py`）：
+  3 主题（business/consult/academic，按子能力自动选）× 10 版式，
+  bar/pie/line 为 pptx 原生图表对象、用户可二次编辑；不再依赖 marp / chrome。
+- **办公文档可嵌数据图表**（`src/skills/charts.py`）：matplotlib(Agg) 出 PNG 嵌入 docx；
+  中文标签依赖系统 CJK 字体（服务器已有 `fonts-noto-cjk`），探测不到时自动降级为文字列举。
+- 依赖：`python-pptx>=1.0.2`、`matplotlib>=3.9`（已入 requirements-platform.txt）。
+
+**遗留基础设施**：服务器上的 marp + chrome-headless-shell（`/opt/chrome-*`、
+`CHROME_PATH` 环境）现仅 `src/ppt/graph/`（已不被平台端点调用）使用，可保留备用，
+重建服务器时**无需再装**。历史安装步骤见 git 历史中本节旧版。
 
 ## 9. 风险提醒
 
